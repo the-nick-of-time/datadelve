@@ -1,16 +1,13 @@
 [tool.poetry]
-name = "dnd"
-version = "0.3.0"
-description = "A tool to manage math to do with Dungeons and Dragons."
+name = "datalayers"
+version = "0.1.0"
+description = "A library to read and manipulate values within JSON files, including multiple files layered on a first-found basis"
 authors = ["Nick Thurmes <nthurmes@gmail.com>"]
 license = "GPL-2.0+"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-dndice = "^2.1"
-dpath = "^1.4"
 jsonpointer = "^2.0"
-lxml = "^4.4"
 
 [tool.poetry.dev-dependencies]
 nose2 = "^0.9.1"
