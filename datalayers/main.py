@@ -5,8 +5,31 @@ from typing import Dict, Any, Union
 
 import jsonpointer
 
-from . import exceptionsLib as ex
-from . import helpers as h
+
+class InterfaceError(Exception):
+    pass
+
+
+class ReadonlyError(InterfaceError):
+    pass
+
+
+class PathError(InterfaceError, ValueError):
+    pass
+
+
+class MissingFileError(InterfaceError):
+    pass
+
+
+def sanitize_filename(name: str) -> str:
+    """Translates problematic characters in a filename into happier ones."""
+    return name.translate(str.maketrans(" '/:", "_@&$"))
+
+
+def readable_filename(name: str) -> str:
+    """Translates back into the actual, problematic characters."""
+    return name.translate(str.maketrans("_@&$", " '/:"))
 
 
 class DataInterface:
@@ -42,7 +65,7 @@ class DataInterface:
 
     def delete(self, path):
         if self.readonly:
-            raise ex.ReadonlyError('{} is readonly'.format(self.data))
+            raise ReadonlyError('{} is readonly'.format(self.data))
         if self.basepath + path == '/':
             self.data = {}
             return
@@ -54,7 +77,7 @@ class DataInterface:
 
     def set(self, path, value):
         if self.readonly:
-            raise ex.ReadonlyError('{} is readonly'.format(self.data))
+            raise ReadonlyError('{} is readonly'.format(self.data))
         if self.basepath + path == '/':
             self.data = value
             return
@@ -84,7 +107,7 @@ class JsonInterface(DataInterface):
             return obj
 
     def __init__(self, filename, readonly=False, isabsolute=False):
-        self.shortFilename = h.readable_filename(str(filename))
+        self.shortFilename = readable_filename(str(filename))
         if isabsolute:
             self.filename = Path(filename)
         else:
@@ -111,7 +134,7 @@ class JsonInterface(DataInterface):
 
     def write(self):
         if self.readonly:
-            raise ex.ReadonlyError("Trying to write a readonly file")
+            raise ReadonlyError("Trying to write a readonly file")
         with open(self.filename, 'w') as f:
             json.dump(self.data, f, indent=2)
 
@@ -148,7 +171,7 @@ class LinkedInterface:
             filename = split[0]
             path = split[1]
         else:
-            raise ex.PathError("Format should be filename:/path")
+            raise PathError("Format should be filename:/path")
         if filename in self.searchpath:
             return self.searchpath[filename].get(path)
         elif filename == '*':
@@ -170,6 +193,7 @@ class LinkedInterface:
                             rv = [found]
                             add = list.append
                     else:
+                        # noinspection PyUnboundLocalVariable
                         add(rv, found)
             return rv
         elif filename is None:
@@ -180,5 +204,5 @@ class LinkedInterface:
                     return rv
             return None
         else:
-            raise ex.PathError('If you supply a filename, it must be one in this '
-                               'LinkedInterface or "*"')
+            raise PathError('If you supply a filename, it must be one in this '
+                            'LinkedInterface or "*"')
