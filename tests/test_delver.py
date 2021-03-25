@@ -39,7 +39,7 @@ class TestDataDelver(unittest.TestCase):
         self.assertEqual(delve.get('/string'), 'value')
         self.assertEqual(delve.get('/dict/a'), 'A')
         self.assertEqual(delve.get('/list/3'), True)
-        self.assertEqual(delve.get('/'), self.data)
+        self.assertEqual(delve.get(''), self.data)
         self.assertIs(delve.get('/nonexistent'), None)
 
     def test_set(self):
@@ -50,8 +50,8 @@ class TestDataDelver(unittest.TestCase):
         self.assertEqual(self.data['dict'], 'a dict no longer')
         delve.set('/new', "new value")
         self.assertEqual(self.data['new'], 'new value')
-        delve.set('/', "nothing remains")
-        self.assertEqual(delve.get('/'), "nothing remains")
+        delve.set('', "nothing remains")
+        self.assertEqual(delve.get(''), "nothing remains")
 
     def test_delete(self):
         delve = DataDelver(self.data)
@@ -59,21 +59,21 @@ class TestDataDelver(unittest.TestCase):
         self.assertEqual(self.data['dict'], {'b': 'B'})
         delve.delete('/list/1')
         self.assertEqual(self.data['list'], ['string', None, True])
-        delve.delete('/')
-        self.assertEqual(delve.get('/'), {})
+        delve.delete('')
+        self.assertEqual(delve.get(''), {})
 
     def test_cd(self):
         delve = DataDelver(self.data)
         sub = delve.cd('/dict')
         self.assertEqual(sub.get('/a'), 'A')
-        self.assertEqual(sub.get('/'), {'a': 'A', 'b': 'B'})
+        self.assertEqual(sub.get(''), {'a': 'A', 'b': 'B'})
         sub.set('/c', 'C')
         self.assertEqual(sub.get('/c'), 'C')
         sub.delete('/a')
-        self.assertEqual(sub.get('/'), {'b': 'B', 'c': 'C'})
+        self.assertEqual(sub.get(''), {'b': 'B', 'c': 'C'})
         first = delve.cd('/nesting')
         second = first.cd('/multiple')
-        self.assertEqual(second.get('/'), {'levels': 'here'})
+        self.assertEqual(second.get(''), {'levels': 'here'})
 
     def test_readonly(self):
         delve = DataDelver(self.data, True)
@@ -104,7 +104,7 @@ class TestJsonDelver(unittest.TestCase):
 
     def test_init(self):
         delve = JsonDelver(self.file.name)
-        self.assertEqual(delve.get('/'), self.data)
+        self.assertEqual(delve.get(''), self.data)
 
     def test_write(self):
         delve = JsonDelver(self.file.name)

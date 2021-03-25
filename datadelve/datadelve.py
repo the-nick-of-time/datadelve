@@ -39,28 +39,24 @@ class DataDelver:
         self._cache = type(self).JsonPointerCache()
 
     def __iter__(self):
-        obj = self.get('/')
+        obj = self.get('')
         if isinstance(obj, dict):
             yield from obj.items()
         elif isinstance(obj, list):
             yield from obj
 
     def get(self, path: str):
-        if self.basepath + path == '/':
+        if self.basepath + path == '':
             return self.data
-        if path == '/':
-            path = ''
         pointer = self._cache[self.basepath + path]
         return pointer.resolve(self.data, None)
 
     def delete(self, path):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
-        if self.basepath + path == '/':
+        if self.basepath + path == '':
             self.data = {}
             return
-        if path == '/':
-            path = ''
         pointer = self._cache[self.basepath + path]
         subdoc, key = pointer.to_last(self.data)
         del subdoc[key]
@@ -68,11 +64,9 @@ class DataDelver:
     def set(self, path, value):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
-        if self.basepath + path == '/':
+        if self.basepath + path == '':
             self.data = value
             return
-        if path == '/':
-            path = ''
         pointer = self._cache[self.basepath + path]
         pointer.set(self.data, value)
 
