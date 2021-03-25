@@ -22,16 +22,6 @@ class MissingFileError(InterfaceError):
     pass
 
 
-def sanitize_filename(name: str) -> str:
-    """Translates problematic characters in a filename into happier ones."""
-    return name.translate(str.maketrans(" '/:", "_@&$"))
-
-
-def readable_filename(name: str) -> str:
-    """Translates back into the actual, problematic characters."""
-    return name.translate(str.maketrans("_@&$", " '/:"))
-
-
 class DataInterface:
     class JsonPointerCache:
         def __init__(self):
@@ -92,30 +82,21 @@ class DataInterface:
 
 
 class JsonInterface(DataInterface):
-    OBJECTSPATH = Path('./objects/')
-    EXTANT = {}
+    __EXTANT = {}
 
-    def __new__(cls, filename, **kwargs):
-        if kwargs.get('isabsolute', False):
-            totalpath = filename
-        else:
-            totalpath = cls.OBJECTSPATH / filename
-        if totalpath in cls.EXTANT:
-            return cls.EXTANT[totalpath]
+    def __new__(cls, path: Union[Path, str], **kwargs):
+        if path in cls.__EXTANT:
+            return cls.__EXTANT[str(path)]
         else:
             obj = super().__new__(cls)
             return obj
 
-    def __init__(self, filename, readonly=False, isabsolute=False):
-        self.shortFilename = readable_filename(str(filename))
-        if isabsolute:
-            self.filename = Path(filename)
-        else:
-            self.filename = self.OBJECTSPATH / filename
+    def __init__(self, filename: Union[Path, str], readonly=False):
+        self.filename = Path(filename)
         with self.filename.open('r') as f:
             data = json.load(f, object_pairs_hook=collections.OrderedDict)
             super().__init__(data, readonly)
-        self.EXTANT[self.filename] = self
+        self.__EXTANT[self.filename] = self
 
     def __add__(self, other):
         if isinstance(other, JsonInterface):
@@ -130,7 +111,7 @@ class JsonInterface(DataInterface):
         return "<JsonInterface to {}>".format(self.filename)
 
     def __str__(self):
-        return self.shortFilename
+        return self.filename.name
 
     def write(self):
         if self.readonly:
