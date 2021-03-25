@@ -96,15 +96,6 @@ class JsonDelver(DataDelver):
             super().__init__(data, readonly)
         type(self).__EXTANT[str(self.filename)] = self
 
-    def __add__(self, other):
-        if isinstance(other, JsonDelver):
-            return ChainedDelver(self, other)
-        elif isinstance(other, ChainedDelver):
-            return other.__add__(self)
-        else:
-            raise TypeError("You can only add a JsonDelver or a "
-                            "ChainedDelver to a JsonDelver")
-
     def __repr__(self):
         return "<JsonDelver to {}>".format(self.filename)
 
@@ -123,17 +114,6 @@ class ChainedDelver:
         """Delvers should come in order from least to most specific"""
         self.searchpath = collections.OrderedDict(
             (str(inter.filename), inter) for inter in interfaces)
-
-    def __add__(self, other):
-        if isinstance(other, ChainedDelver):
-            self.searchpath.update(other.searchpath)
-            return self
-        elif isinstance(other, JsonDelver):
-            self.searchpath[str(other.filename)] = other
-            return self
-        else:
-            raise TypeError("You can only add a JsonDelver or a "
-                            "ChainedDelver to a ChainedDelver")
 
     def __getitem__(self, item: str) -> JsonDelver:
         return self.searchpath[item]

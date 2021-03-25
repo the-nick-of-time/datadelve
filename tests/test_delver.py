@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from collections import OrderedDict
 
 from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError
 
@@ -164,8 +165,9 @@ class TestChainedDelver(unittest.TestCase):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
-        alt = delve1 + delve2
-        self.assertEqual(linked.searchpath, alt.searchpath)
+        self.assertEqual(linked.searchpath, OrderedDict([
+            (str(delve1.filename), delve1), (str(delve2.filename), delve2)
+        ]))
 
     def test_get_first(self):
         delve1 = JsonDelver(self.file1.name)
@@ -173,18 +175,6 @@ class TestChainedDelver(unittest.TestCase):
         linked = ChainedDelver(delve1, delve2)
         self.assertEqual(linked.get('/string', strategy='first'), 'other')
         self.assertEqual(linked.get('/list/0', strategy='first'), 'some')
-
-    def test_add(self):
-        delve1 = JsonDelver(self.file1.name)
-        delve2 = JsonDelver(self.file2.name)
-        added = delve1 + delve2
-        constructed = ChainedDelver(delve1, delve2)
-        self.assertEqual(added, constructed)
-        iadded = ChainedDelver(delve1)
-        iadded += delve2
-        self.assertEqual(iadded, constructed)
-        self.assertEqual(ChainedDelver(delve1, delve2, delve1, delve2),
-                         added + constructed)
 
     def test_get_merge(self):
         delve1 = JsonDelver(self.file1.name)
