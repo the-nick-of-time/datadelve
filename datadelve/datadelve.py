@@ -1,7 +1,7 @@
 import collections
 import json
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List
 
 import jsonpointer
 
@@ -19,6 +19,10 @@ class PathError(DelverError, ValueError):
 
 
 class MissingFileError(DelverError):
+    pass
+
+
+class MergeError(DelverError, TypeError):
     pass
 
 
@@ -116,7 +120,7 @@ class JsonDelver(DataDelver):
 
 class ChainedDelver:
     def __init__(self, *interfaces: JsonDelver):
-        """interfaces should come in order from least to most specific"""
+        """Delvers should come in order from least to most specific"""
         self.searchpath = collections.OrderedDict(
             (str(inter.filename), inter) for inter in interfaces)
 
@@ -131,53 +135,52 @@ class ChainedDelver:
             raise TypeError("You can only add a JsonDelver or a "
                             "ChainedDelver to a ChainedDelver")
 
+    def __getitem__(self, item: str) -> JsonDelver:
+        return self.searchpath[item]
+
     def _most_to_least(self):
         return reversed(self.searchpath.values())
 
     def _least_to_most(self):
         return self.searchpath.values()
 
-    def get(self, path: str):
-        split = path.split(':', maxsplit=1)
-        if len(split) == 1:
-            filename = None
-            path = split[0]
-        elif len(split) == 2:
-            filename = split[0]
-            path = split[1]
-        else:
-            raise PathError("Format should be filename:/path")
-        if filename in self.searchpath:
-            return self.searchpath[filename].get(path)
-        elif filename == '*':
-            # Find all results in all files
-            # Search in more general files then override with more specific
-            rv = None
-            for iface in self._least_to_most():
-                found = iface.get(path)
-                if found is not None:
-                    if rv is None:
-                        if isinstance(found, list):
-                            add = list.extend
-                            rv = found
-                        elif isinstance(found, dict):
-                            add = dict.update
-                            rv = found
-                        else:
-                            # Aggregate individual values into a list
-                            rv = [found]
-                            add = list.append
+    def _first(self, path: str):
+        for delver in self._most_to_least():
+            found = delver.get(path)
+            if found is not None:
+                return found
+        return None
+
+    def _merge(self, path: str) -> Union[list, dict]:
+        collected = None
+        merger = None
+        for delver in self._least_to_most():
+            found = delver.get(path)
+            if found is not None:
+                if collected is None:
+                    collected = found
+                    if isinstance(found, dict):
+                        merger = dict.update
+                    elif isinstance(found, list):
+                        merger = list.extend
                     else:
-                        # noinspection PyUnboundLocalVariable
-                        add(rv, found)
-            return rv
-        elif filename is None:
-            # Find one result in the most specific file you can find it in
-            for iface in self._most_to_least():
-                rv = iface.get(path)
-                if rv is not None:
-                    return rv
-            return None
-        else:
-            raise PathError('If you supply a filename, it must be one in this '
-                            'ChainedDelver or "*"')
+                        raise MergeError("Can only merge collections, not {!r}".format(found))
+                else:
+                    merger(collected, found)
+        return collected
+
+    def _collect(self, path: str) -> List[Any]:
+        every = []
+        for delver in self._most_to_least():
+            found = delver.get(path)
+            if found is not None:
+                every.append(found)
+        return every
+
+    def get(self, path: str, strategy: str = 'first'):
+        strategies = {
+            'first': self._first,
+            'merge': self._merge,
+            'collect': self._collect,
+        }
+        return strategies[strategy](path)

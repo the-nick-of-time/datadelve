@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 
-from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError
+from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -167,26 +167,12 @@ class TestChainedDelver(unittest.TestCase):
         alt = delve1 + delve2
         self.assertEqual(linked.searchpath, alt.searchpath)
 
-    def test_get(self):
+    def test_get_first(self):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get('/string'), 'other')
-        self.assertEqual(linked.get('/list/0'), 'some')
-
-    def test_get_all(self):
-        delve1 = JsonDelver(self.file1.name)
-        delve2 = JsonDelver(self.file2.name)
-        linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get('*:/string'), ['value', 'other'])
-        self.assertEqual(linked.get('*:/list'), ['string', 1, None, True, 'some', 'more'])
-        self.assertEqual(linked.get('*:/dict'), {'a': 'A', 'b': 'B', 'x': 'X', 'y': 'Y'})
-
-    def test_get_specific(self):
-        delve1 = JsonDelver(self.file1.name)
-        delve2 = JsonDelver(self.file2.name)
-        linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get(str(delve1.filename) + ':/string'), 'value')
+        self.assertEqual(linked.get('/string', strategy='first'), 'other')
+        self.assertEqual(linked.get('/list/0', strategy='first'), 'some')
 
     def test_add(self):
         delve1 = JsonDelver(self.file1.name)
@@ -199,6 +185,27 @@ class TestChainedDelver(unittest.TestCase):
         self.assertEqual(iadded, constructed)
         self.assertEqual(ChainedDelver(delve1, delve2, delve1, delve2),
                          added + constructed)
+
+    def test_get_merge(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        self.assertEqual(linked.get('/list', strategy='merge'),
+                         ['string', 1, None, True, 'some', 'more'])
+        self.assertEqual(linked.get('/dict', strategy='merge'),
+                         {'a': 'A', 'b': 'B', 'x': 'X', 'y': 'Y'})
+        with self.assertRaises(MergeError):
+            linked.get('/string', strategy='merge')
+
+    def test_get_collect(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        self.assertEqual(linked.get('/string', strategy='collect'), ['other', 'value'])
+        self.assertEqual(linked.get('/list', strategy='collect'),
+                         [['some', 'more'], ['string', 1, None, True]])
+        self.assertEqual(linked.get('/dict', strategy='collect'),
+                         [{'x': 'X', 'y': 'Y'}, {'a': 'A', 'b': 'B'}])
 
     def tearDown(self) -> None:
         self.file1.close()
