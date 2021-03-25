@@ -2,14 +2,14 @@ import json
 import tempfile
 import unittest
 
-from datadelve.datadelve import LinkedInterface, DataInterface, JsonInterface
+from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver
 
 
-def linked_equal(a: LinkedInterface, b: LinkedInterface):
+def linked_equal(a: ChainedDelver, b: ChainedDelver):
     return a.searchpath == b.searchpath
 
 
-LinkedInterface.__eq__ = linked_equal
+ChainedDelver.__eq__ = linked_equal
 
 
 class TestDataInterface(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestDataInterface(unittest.TestCase):
         }
 
     def test_get(self):
-        inter = DataInterface(self.data)
+        inter = DataDelver(self.data)
         self.assertEqual(inter.get('/string'), 'value')
         self.assertEqual(inter.get('/dict/a'), 'A')
         self.assertEqual(inter.get('/list/3'), True)
@@ -43,7 +43,7 @@ class TestDataInterface(unittest.TestCase):
         self.assertIs(inter.get('/nonexistent'), None)
 
     def test_set(self):
-        inter = DataInterface(self.data)
+        inter = DataDelver(self.data)
         inter.set('/dict/a', 'New A')
         self.assertEqual(self.data['dict']['a'], 'New A')
         inter.set('/dict', 'a dict no longer')
@@ -54,7 +54,7 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(inter.get('/'), "nothing remains")
 
     def test_delete(self):
-        inter = DataInterface(self.data)
+        inter = DataDelver(self.data)
         inter.delete('/dict/a')
         self.assertEqual(self.data['dict'], {'b': 'B'})
         inter.delete('/list/1')
@@ -63,7 +63,7 @@ class TestDataInterface(unittest.TestCase):
         self.assertEqual(inter.get('/'), {})
 
     def test_cd(self):
-        inter = DataInterface(self.data)
+        inter = DataDelver(self.data)
         sub = inter.cd('/dict')
         self.assertEqual(sub.get('/a'), 'A')
         self.assertEqual(sub.get('/'), {'a': 'A', 'b': 'B'})
@@ -96,14 +96,14 @@ class TestJsonInterface(unittest.TestCase):
         self.file.flush()
 
     def test_init(self):
-        inter = JsonInterface(self.file.name)
+        inter = JsonDelver(self.file.name)
         self.assertEqual(inter.get('/'), self.data)
 
     def test_write(self):
-        inter = JsonInterface(self.file.name)
+        inter = JsonDelver(self.file.name)
         inter.set('/newkey', 'something')
         inter.write()
-        new = JsonInterface(self.file.name)
+        new = JsonDelver(self.file.name)
         self.assertEqual(new.get('/newkey'), 'something')
 
     def tearDown(self) -> None:
@@ -144,43 +144,43 @@ class TestLinkedInterface(unittest.TestCase):
         self.file2.flush()
 
     def test_create(self):
-        inter1 = JsonInterface(self.file1.name)
-        inter2 = JsonInterface(self.file2.name)
-        linked = LinkedInterface(inter1, inter2)
+        inter1 = JsonDelver(self.file1.name)
+        inter2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(inter1, inter2)
         alt = inter1 + inter2
         self.assertEqual(linked.searchpath, alt.searchpath)
 
     def test_get(self):
-        inter1 = JsonInterface(self.file1.name)
-        inter2 = JsonInterface(self.file2.name)
-        linked = LinkedInterface(inter1, inter2)
+        inter1 = JsonDelver(self.file1.name)
+        inter2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(inter1, inter2)
         self.assertEqual(linked.get('/string'), 'other')
         self.assertEqual(linked.get('/list/0'), 'some')
 
     def test_get_all(self):
-        inter1 = JsonInterface(self.file1.name)
-        inter2 = JsonInterface(self.file2.name)
-        linked = LinkedInterface(inter1, inter2)
+        inter1 = JsonDelver(self.file1.name)
+        inter2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(inter1, inter2)
         self.assertEqual(linked.get('*:/string'), ['value', 'other'])
         self.assertEqual(linked.get('*:/list'), ['string', 1, None, True, 'some', 'more'])
         self.assertEqual(linked.get('*:/dict'), {'a': 'A', 'b': 'B', 'x': 'X', 'y': 'Y'})
 
     def test_get_specific(self):
-        inter1 = JsonInterface(self.file1.name)
-        inter2 = JsonInterface(self.file2.name)
-        linked = LinkedInterface(inter1, inter2)
+        inter1 = JsonDelver(self.file1.name)
+        inter2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(inter1, inter2)
         self.assertEqual(linked.get(str(inter1.filename) + ':/string'), 'value')
 
     def test_add(self):
-        inter1 = JsonInterface(self.file1.name)
-        inter2 = JsonInterface(self.file2.name)
+        inter1 = JsonDelver(self.file1.name)
+        inter2 = JsonDelver(self.file2.name)
         added = inter1 + inter2
-        constructed = LinkedInterface(inter1, inter2)
+        constructed = ChainedDelver(inter1, inter2)
         self.assertEqual(added, constructed)
-        iadded = LinkedInterface(inter1)
+        iadded = ChainedDelver(inter1)
         iadded += inter2
         self.assertEqual(iadded, constructed)
-        self.assertEqual(LinkedInterface(inter1, inter2, inter1, inter2),
+        self.assertEqual(ChainedDelver(inter1, inter2, inter1, inter2),
                          added + constructed)
 
     def tearDown(self) -> None:

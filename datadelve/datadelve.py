@@ -6,23 +6,23 @@ from typing import Dict, Any, Union
 import jsonpointer
 
 
-class InterfaceError(Exception):
+class DelverError(Exception):
     pass
 
 
-class ReadonlyError(InterfaceError):
+class ReadonlyError(DelverError):
     pass
 
 
-class PathError(InterfaceError, ValueError):
+class PathError(DelverError, ValueError):
     pass
 
 
-class MissingFileError(InterfaceError):
+class MissingFileError(DelverError):
     pass
 
 
-class DataInterface:
+class DataDelver:
     class JsonPointerCache:
         def __init__(self):
             self.cache = {}
@@ -77,11 +77,11 @@ class DataInterface:
         pointer.set(self.data, value)
 
     def cd(self, path, readonly=False):
-        return DataInterface(self.data, readonly=self.readonly or readonly,
-                             basepath=self.basepath + path)
+        return DataDelver(self.data, readonly=self.readonly or readonly,
+                          basepath=self.basepath + path)
 
 
-class JsonInterface(DataInterface):
+class JsonDelver(DataDelver):
     __EXTANT = {}
 
     def __new__(cls, path: Union[Path, str], **kwargs):
@@ -99,16 +99,16 @@ class JsonInterface(DataInterface):
         self.__EXTANT[self.filename] = self
 
     def __add__(self, other):
-        if isinstance(other, JsonInterface):
-            return LinkedInterface(self, other)
-        elif isinstance(other, LinkedInterface):
+        if isinstance(other, JsonDelver):
+            return ChainedDelver(self, other)
+        elif isinstance(other, ChainedDelver):
             return other.__add__(self)
         else:
-            raise TypeError("You can only add a JsonInterface or a "
-                            "MultiInterface to a JsonInterface")
+            raise TypeError("You can only add a JsonDelver or a "
+                            "ChainedDelver to a JsonDelver")
 
     def __repr__(self):
-        return "<JsonInterface to {}>".format(self.filename)
+        return "<JsonDelver to {}>".format(self.filename)
 
     def __str__(self):
         return self.filename.name
@@ -120,22 +120,22 @@ class JsonInterface(DataInterface):
             json.dump(self.data, f, indent=2)
 
 
-class LinkedInterface:
-    def __init__(self, *interfaces: JsonInterface):
+class ChainedDelver:
+    def __init__(self, *interfaces: JsonDelver):
         """interfaces should come in order from least to most specific"""
         self.searchpath = collections.OrderedDict(
             (str(inter.filename), inter) for inter in interfaces)
 
     def __add__(self, other):
-        if isinstance(other, LinkedInterface):
+        if isinstance(other, ChainedDelver):
             self.searchpath.update(other.searchpath)
             return self
-        elif isinstance(other, JsonInterface):
+        elif isinstance(other, JsonDelver):
             self.searchpath[str(other.filename)] = other
             return self
         else:
-            raise TypeError("You can only add a JsonInterface or a "
-                            "MultiInterface to a MultiInterface")
+            raise TypeError("You can only add a JsonDelver or a "
+                            "ChainedDelver to a ChainedDelver")
 
     def _most_to_least(self):
         return reversed(self.searchpath.values())
@@ -186,4 +186,4 @@ class LinkedInterface:
             return None
         else:
             raise PathError('If you supply a filename, it must be one in this '
-                            'LinkedInterface or "*"')
+                            'ChainedDelver or "*"')
