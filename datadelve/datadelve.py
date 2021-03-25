@@ -26,6 +26,10 @@ class MergeError(DelverError, TypeError):
     pass
 
 
+class IterationError(DelverError, TypeError):
+    pass
+
+
 class DataDelver:
     class JsonPointerCache:
         def __init__(self):
@@ -48,6 +52,8 @@ class DataDelver:
             yield from obj.items()
         elif isinstance(obj, list):
             yield from obj
+        else:
+            raise IterationError('Cannot iterate over {!r}'.format(obj))
 
     def get(self, path: str):
         if self.basepath + path == '':

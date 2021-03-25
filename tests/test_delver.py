@@ -2,8 +2,10 @@ import json
 import tempfile
 import unittest
 from collections import OrderedDict
+from pathlib import Path
 
-from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError
+from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, \
+    MergeError, IterationError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -83,6 +85,18 @@ class TestDataDelver(unittest.TestCase):
         with self.assertRaises(ReadonlyError):
             delve.set('/new', 'foo')
 
+    def test_iter(self):
+        delve = DataDelver(self.data)
+        for get_pair, orig_pair in zip(delve, self.data.items()):
+            self.assertEqual(get_pair, orig_pair)
+        child = delve.cd('/list')
+        for pulled, original in zip(child, self.data['list']):
+            self.assertEqual(pulled, original)
+        scalar = delve.cd('/string')
+        with self.assertRaises(IterationError):
+            for impossible in scalar:
+                pass
+
 
 class TestJsonDelver(unittest.TestCase):
     def setUp(self) -> None:
@@ -99,9 +113,10 @@ class TestJsonDelver(unittest.TestCase):
                 True
             ]
         }
-        self.file = tempfile.NamedTemporaryFile(mode='w+', encoding='utf8')
+        self.file = tempfile.NamedTemporaryFile(mode='w+', encoding='utf8', delete=False)
         json.dump(self.data, self.file)
         self.file.flush()
+        self.file.close()
 
     def test_init(self):
         delve = JsonDelver(self.file.name)
@@ -111,8 +126,8 @@ class TestJsonDelver(unittest.TestCase):
         delve = JsonDelver(self.file.name)
         delve.set('/newkey', 'something')
         delve.write()
-        new = JsonDelver(self.file.name)
-        self.assertEqual(new.get('/newkey'), 'something')
+        written = json.load(open(self.file.name, 'r'))
+        self.assertEqual(written, delve.data)
 
     def test_flyweight(self):
         first = JsonDelver(self.file.name)
@@ -124,8 +139,13 @@ class TestJsonDelver(unittest.TestCase):
         with self.assertRaises(ReadonlyError):
             delve.write()
 
+    def test_str(self):
+        delve = JsonDelver(self.file.name)
+        self.assertEqual(str(delve), Path(self.file.name).name)
+
     def tearDown(self) -> None:
         self.file.close()
+        Path(self.file.name).unlink()
 
 
 class TestChainedDelver(unittest.TestCase):
