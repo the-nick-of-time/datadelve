@@ -9,8 +9,8 @@ sort = Cover
 
 [run]
 source =
-    datalayers
+    datadelve
 branch = True
 
 [html]
-title = DataLayers Test Coverage
+title = DataDelve Test Coverage

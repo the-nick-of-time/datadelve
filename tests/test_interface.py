@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 
-from datalayers.main import LinkedInterface, DataInterface, JsonInterface
+from datadelve.datadelve import LinkedInterface, DataInterface, JsonInterface
 
 
 def linked_equal(a: LinkedInterface, b: LinkedInterface):
