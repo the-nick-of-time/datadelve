@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 
-from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver
+from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -75,6 +75,13 @@ class TestDataDelver(unittest.TestCase):
         second = first.cd('/multiple')
         self.assertEqual(second.get('/'), {'levels': 'here'})
 
+    def test_readonly(self):
+        delve = DataDelver(self.data, True)
+        with self.assertRaises(ReadonlyError):
+            delve.delete('/string')
+        with self.assertRaises(ReadonlyError):
+            delve.set('/new', 'foo')
+
 
 class TestJsonDelver(unittest.TestCase):
     def setUp(self) -> None:
@@ -105,6 +112,16 @@ class TestJsonDelver(unittest.TestCase):
         delve.write()
         new = JsonDelver(self.file.name)
         self.assertEqual(new.get('/newkey'), 'something')
+
+    def test_flyweight(self):
+        first = JsonDelver(self.file.name)
+        second = JsonDelver(self.file.name)
+        self.assertIs(first, second)
+
+    def test_readonly(self):
+        delve = JsonDelver(self.file.name, readonly=True)
+        with self.assertRaises(ReadonlyError):
+            delve.write()
 
     def tearDown(self) -> None:
         self.file.close()

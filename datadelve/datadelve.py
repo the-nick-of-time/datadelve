@@ -85,7 +85,7 @@ class JsonDelver(DataDelver):
     __EXTANT = {}
 
     def __new__(cls, path: Union[Path, str], **kwargs):
-        if path in cls.__EXTANT:
+        if str(path) in cls.__EXTANT:
             return cls.__EXTANT[str(path)]
         else:
             obj = super().__new__(cls)
@@ -96,7 +96,7 @@ class JsonDelver(DataDelver):
         with self.filename.open('r') as f:
             data = json.load(f, object_pairs_hook=collections.OrderedDict)
             super().__init__(data, readonly)
-        self.__EXTANT[self.filename] = self
+        type(self).__EXTANT[str(self.filename)] = self
 
     def __add__(self, other):
         if isinstance(other, JsonDelver):
