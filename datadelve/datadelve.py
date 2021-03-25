@@ -115,8 +115,8 @@ class ChainedDelver:
         self.searchpath = collections.OrderedDict(
             (str(inter.filename), inter) for inter in interfaces)
 
-    def __getitem__(self, item: str) -> JsonDelver:
-        return self.searchpath[item]
+    def __getitem__(self, filename: str) -> JsonDelver:
+        return self.searchpath[filename]
 
     def _most_to_least(self):
         return reversed(self.searchpath.values())

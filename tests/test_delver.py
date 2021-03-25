@@ -152,7 +152,8 @@ class TestChainedDelver(unittest.TestCase):
             "dict": {
                 'x': 'X',
                 'y': 'Y'
-            }
+            },
+            "sometimes": ["here"]
         }
         self.file1 = tempfile.NamedTemporaryFile(mode='w+', encoding='utf8')
         json.dump(self.data1, self.file1)
@@ -175,6 +176,7 @@ class TestChainedDelver(unittest.TestCase):
         linked = ChainedDelver(delve1, delve2)
         self.assertEqual(linked.get('/string', strategy='first'), 'other')
         self.assertEqual(linked.get('/list/0', strategy='first'), 'some')
+        self.assertEqual(linked.get('/nonexistent'), None)
 
     def test_get_merge(self):
         delve1 = JsonDelver(self.file1.name)
@@ -184,6 +186,7 @@ class TestChainedDelver(unittest.TestCase):
                          ['string', 1, None, True, 'some', 'more'])
         self.assertEqual(linked.get('/dict', strategy='merge'),
                          {'a': 'A', 'b': 'B', 'x': 'X', 'y': 'Y'})
+        self.assertEqual(linked.get('/sometimes', strategy='merge'), ['here'])
         with self.assertRaises(MergeError):
             linked.get('/string', strategy='merge')
 
@@ -196,6 +199,13 @@ class TestChainedDelver(unittest.TestCase):
                          [['some', 'more'], ['string', 1, None, True]])
         self.assertEqual(linked.get('/dict', strategy='collect'),
                          [{'x': 'X', 'y': 'Y'}, {'a': 'A', 'b': 'B'}])
+        self.assertEqual(linked.get('/sometimes', strategy='collect'), [['here']])
+
+    def test_retrieve(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        self.assertIs(linked[self.file1.name], delve1)
 
     def tearDown(self) -> None:
         self.file1.close()
