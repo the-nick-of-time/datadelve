@@ -1,4 +1,7 @@
 # DataDelve
+[![PyPI version](https://badge.fury.io/py/datadelve.svg)](https://badge.fury.io/py/datadelve)
+[![Coverage Status](https://coveralls.io/repos/github/the-nick-of-time/datadelve/badge.svg?branch=master)](https://coveralls.io/github/the-nick-of-time/datadelve?branch=master)
+[![Build Status](https://travis-ci.org/the-nick-of-time/datadelve.svg?branch=master)](https://travis-ci.org/the-nick-of-time/datadelve)
 
 Working with complex nested data can be tedious. If you have to access any objects that are four layers deep in a JSON response from a web service, you quickly tire of writing square brackets.
 Much better would be to have a simple way of accessing data through a simple syntax. 
