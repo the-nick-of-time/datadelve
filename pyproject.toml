@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "datadelve"
-version = "0.2.0"
+version = "0.3.0"
 description = "A library to read and manipulate values within JSON files, including multiple files layered on a first-found basis"
 authors = ["Nick Thurmes <nthurmes@gmail.com>"]
 license = "GPL-2.0+"
