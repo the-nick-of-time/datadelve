@@ -5,7 +5,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
-    IterationError, PathError
+    IterationError, PathError, InvalidFileError, UnreadableFileError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -167,6 +167,16 @@ class TestJsonDelver(unittest.TestCase):
     def test_str(self):
         delve = JsonDelver(self.file.name)
         self.assertEqual(str(delve), Path(self.file.name).name)
+
+    def test_nonexistent_file(self):
+        with self.assertRaises(UnreadableFileError):
+            JsonDelver('./nonexistent')
+
+    def test_nonjson_file(self):
+        otherfile = tempfile.NamedTemporaryFile('w+')
+        otherfile.write('this is not valid json')
+        with self.assertRaises(InvalidFileError):
+            JsonDelver(otherfile.name)
 
     def tearDown(self) -> None:
         self.file.close()

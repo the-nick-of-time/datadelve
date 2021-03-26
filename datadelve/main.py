@@ -5,7 +5,8 @@ from typing import Dict, Any, Union, List
 
 import jsonpointer
 
-from datadelve.exceptions import IterationError, ReadonlyError, MergeError, PathError
+from datadelve.exceptions import IterationError, ReadonlyError, MergeError, PathError, \
+    InvalidFileError, UnreadableFileError
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
@@ -120,9 +121,15 @@ class JsonDelver(DataDelver):
 
     def __init__(self, filename: Union[Path, str], readonly=False):
         self.filename = Path(filename)
-        with self.filename.open('r') as f:
-            data = json.load(f, object_pairs_hook=collections.OrderedDict)
-            super().__init__(data, readonly)
+        try:
+            with self.filename.open('r') as f:
+                try:
+                    data = json.load(f, object_pairs_hook=collections.OrderedDict)
+                except json.JSONDecodeError as e:
+                    raise InvalidFileError(str(self.filename) + ' is not valid JSON') from e
+                super().__init__(data, readonly)
+        except OSError as e:
+            raise UnreadableFileError(str(self.filename) + ' could not be read') from e
         type(self).__EXTANT[str(self.filename)] = self
 
     def __repr__(self):

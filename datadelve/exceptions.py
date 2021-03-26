@@ -10,7 +10,11 @@ class PathError(DelverError, ValueError):
     pass
 
 
-class MissingFileError(DelverError):
+class InvalidFileError(DelverError):
+    pass
+
+
+class UnreadableFileError(DelverError, OSError):
     pass
 
 
