@@ -5,6 +5,8 @@ from typing import Dict, Any, Union, List
 
 import jsonpointer
 
+JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
+
 
 class DelverError(Exception):
     pass
@@ -30,7 +32,30 @@ class IterationError(DelverError, TypeError):
     pass
 
 
-class DataDelver:
+class Delver:
+    def __iter__(self):
+        obj = self.get('')
+        if isinstance(obj, dict):
+            yield from obj.items()
+        elif isinstance(obj, list):
+            yield from obj
+        else:
+            raise IterationError('Cannot iterate over {!r}'.format(obj))
+
+    def get(self, path: str) -> Any:
+        raise NotImplementedError()
+
+    def set(self, path: str, value: Any) -> None:
+        raise NotImplementedError()
+
+    def delete(self, path: str) -> None:
+        raise NotImplementedError()
+
+    def cd(self, path: str, readonly: bool) -> 'Delver':
+        raise NotImplementedError()
+
+
+class DataDelver(Delver):
     class JsonPointerCache:
         def __init__(self):
             self.cache = {}
@@ -44,15 +69,6 @@ class DataDelver:
         self.data = data
         self.readonly = readonly
         self._cache = type(self).JsonPointerCache()
-
-    def __iter__(self):
-        obj = self.get('')
-        if isinstance(obj, dict):
-            yield from obj.items()
-        elif isinstance(obj, list):
-            yield from obj
-        else:
-            raise IterationError('Cannot iterate over {!r}'.format(obj))
 
     def get(self, path: str):
         if path == '':
@@ -83,20 +99,11 @@ class DataDelver:
         return ChildDelver(self, self.readonly or readonly, path)
 
 
-class ChildDelver:
+class ChildDelver(Delver):
     def __init__(self, parent: DataDelver, readonly=False, basepath=''):
         self.parent = parent
         self.readonly = readonly
         self.basepath = basepath.rstrip('/')
-
-    def __iter__(self):
-        obj = self.get('')
-        if isinstance(obj, dict):
-            yield from obj.items()
-        elif isinstance(obj, list):
-            yield from obj
-        else:
-            raise IterationError('Cannot iterate over {!r}'.format(obj))
 
     def get(self, path):
         return self.parent.get(self.basepath + path)
@@ -193,7 +200,7 @@ class ChainedDelver:
                 every.append(found)
         return every
 
-    def get(self, path: str, strategy: str = 'first'):
+    def get(self, path: str, strategy: str = 'first') -> JsonValue:
         strategies = {
             'first': self._first,
             'merge': self._merge,
