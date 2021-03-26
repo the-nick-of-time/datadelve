@@ -103,6 +103,14 @@ class TestDataDelver(unittest.TestCase):
         delve.set('', {'dict': 'replaced'})
         self.assertEqual(sub.get(''), 'replaced')
 
+    def test_readonly_cd(self):
+        delve = DataDelver(self.data)
+        sub = delve.cd('/dict', readonly=True)
+        with self.assertRaises(ReadonlyError):
+            sub.set('/new', 12)
+        with self.assertRaises(ReadonlyError):
+            sub.delete('/c')
+
 
 class TestJsonDelver(unittest.TestCase):
     def setUp(self) -> None:
