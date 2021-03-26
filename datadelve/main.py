@@ -5,7 +5,7 @@ from typing import Dict, Any, Union, List
 
 import jsonpointer
 
-from datadelve.exceptions import IterationError, ReadonlyError, MergeError
+from datadelve.exceptions import IterationError, ReadonlyError, MergeError, PathError
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
@@ -71,7 +71,12 @@ class DataDelver(Delver):
             self.data = value
             return
         pointer = self._cache[path]
-        pointer.set(self.data, value)
+        try:
+            pointer.set(self.data, value)
+        except jsonpointer.JsonPointerException as e:
+            raise PathError(
+                'Some of the path segments of {} are missing within {}'.format(path, self.data),
+                e)
 
     def cd(self, path, readonly=False):
         return ChildDelver(self, self.readonly or readonly, path)

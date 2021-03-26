@@ -5,7 +5,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
-    IterationError
+    IterationError, PathError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -110,6 +110,11 @@ class TestDataDelver(unittest.TestCase):
             sub.set('/new', 12)
         with self.assertRaises(ReadonlyError):
             sub.delete('/c')
+
+    def test_set_without_intermediate(self):
+        delve = DataDelver(self.data)
+        with self.assertRaises(PathError):
+            delve.set('/nonexistent/path', 'foo')
 
 
 class TestJsonDelver(unittest.TestCase):
