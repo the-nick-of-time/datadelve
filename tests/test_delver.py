@@ -4,8 +4,8 @@ import unittest
 from collections import OrderedDict
 from pathlib import Path
 
-from datadelve.datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, \
-    MergeError, IterationError
+from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
+    IterationError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):

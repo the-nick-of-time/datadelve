@@ -5,31 +5,9 @@ from typing import Dict, Any, Union, List
 
 import jsonpointer
 
+from datadelve.exceptions import IterationError, ReadonlyError, MergeError
+
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
-
-
-class DelverError(Exception):
-    pass
-
-
-class ReadonlyError(DelverError):
-    pass
-
-
-class PathError(DelverError, ValueError):
-    pass
-
-
-class MissingFileError(DelverError):
-    pass
-
-
-class MergeError(DelverError, TypeError):
-    pass
-
-
-class IterationError(DelverError, TypeError):
-    pass
 
 
 class Delver:
@@ -51,7 +29,7 @@ class Delver:
     def delete(self, path: str) -> None:
         raise NotImplementedError()
 
-    def cd(self, path: str, readonly: bool) -> 'Delver':
+    def cd(self, path: str, readonly=False) -> 'Delver':
         raise NotImplementedError()
 
 
