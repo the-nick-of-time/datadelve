@@ -141,7 +141,7 @@ class JsonDelver(DataDelver):
     def write(self):
         if self.readonly:
             raise ReadonlyError("Trying to write a readonly file")
-        with open(self.filename, 'w') as f:
+        with self.filename.open('w') as f:
             json.dump(self.data, f, indent=2)
 
 
