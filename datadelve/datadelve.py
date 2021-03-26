@@ -40,9 +40,8 @@ class DataDelver:
                 self.cache[key] = jsonpointer.JsonPointer(key)
             return self.cache[key]
 
-    def __init__(self, data: Union[list, Dict[str, Any]], readonly=False, basepath=""):
+    def __init__(self, data: Union[list, Dict[str, Any]], readonly=False):
         self.data = data
-        self.basepath = basepath.rstrip('/')
         self.readonly = readonly
         self._cache = type(self).JsonPointerCache()
 
@@ -56,33 +55,64 @@ class DataDelver:
             raise IterationError('Cannot iterate over {!r}'.format(obj))
 
     def get(self, path: str):
-        if self.basepath + path == '':
+        if path == '':
             return self.data
-        pointer = self._cache[self.basepath + path]
+        pointer = self._cache[path]
         return pointer.resolve(self.data, None)
 
     def delete(self, path):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
-        if self.basepath + path == '':
+        if path == '':
             self.data = {}
             return
-        pointer = self._cache[self.basepath + path]
+        pointer = self._cache[path]
         subdoc, key = pointer.to_last(self.data)
         del subdoc[key]
 
     def set(self, path, value):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
-        if self.basepath + path == '':
+        if path == '':
             self.data = value
             return
-        pointer = self._cache[self.basepath + path]
+        pointer = self._cache[path]
         pointer.set(self.data, value)
 
     def cd(self, path, readonly=False):
-        return DataDelver(self.data, readonly=self.readonly or readonly,
-                          basepath=self.basepath + path)
+        return ChildDelver(self, self.readonly or readonly, path)
+
+
+class ChildDelver:
+    def __init__(self, parent: DataDelver, readonly=False, basepath=''):
+        self.parent = parent
+        self.readonly = readonly
+        self.basepath = basepath.rstrip('/')
+
+    def __iter__(self):
+        obj = self.get('')
+        if isinstance(obj, dict):
+            yield from obj.items()
+        elif isinstance(obj, list):
+            yield from obj
+        else:
+            raise IterationError('Cannot iterate over {!r}'.format(obj))
+
+    def get(self, path):
+        return self.parent.get(self.basepath + path)
+
+    def set(self, path, value):
+        if self.readonly:
+            raise ReadonlyError('{} is readonly'.format(self))
+        self.parent.set(self.basepath + path, value)
+
+    def delete(self, path):
+        if self.readonly:
+            raise ReadonlyError('{} is readonly'.format(self))
+        self.parent.delete(self.basepath + path)
+
+    def cd(self, path, readonly=False):
+        return ChildDelver(self.parent, self.readonly or readonly, self.basepath + path)
 
 
 class JsonDelver(DataDelver):

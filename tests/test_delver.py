@@ -97,6 +97,12 @@ class TestDataDelver(unittest.TestCase):
             for impossible in scalar:
                 pass
 
+    def test_set_root_after_cd(self):
+        delve = DataDelver(self.data)
+        sub = delve.cd('/dict')
+        delve.set('', {'dict': 'replaced'})
+        self.assertEqual(sub.get(''), 'replaced')
+
 
 class TestJsonDelver(unittest.TestCase):
     def setUp(self) -> None:
