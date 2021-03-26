@@ -62,6 +62,12 @@ class TestDataDelver(unittest.TestCase):
         self.assertEqual(self.data['dict'], {'b': 'B'})
         delve.delete('/list/1')
         self.assertEqual(self.data['list'], ['string', None, True])
+        with self.assertRaises(PathError):
+            delve.delete('/nonexistent')
+        with self.assertRaises(PathError):
+            delve.delete('/dict/nonexistent')
+        with self.assertRaises(PathError):
+            delve.delete('/dict/nested/nonexistent')
         delve.delete('')
         self.assertEqual(delve.get(''), {})
 
