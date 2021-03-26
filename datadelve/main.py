@@ -65,9 +65,8 @@ class DataDelver(Delver):
             subdoc, key = pointer.to_last(self.data)
             del subdoc[key]
         except (jsonpointer.JsonPointerException, KeyError) as e:
-            raise PathError(
-                'Some of the path segments of {} are missing within {}'.format(path, self.data),
-                e)
+            m = 'Some of the path segments of {} are missing within {}'.format(path, self.data)
+            raise PathError(m) from e
 
     def set(self, path, value):
         if self.readonly:
@@ -79,9 +78,8 @@ class DataDelver(Delver):
         try:
             pointer.set(self.data, value)
         except jsonpointer.JsonPointerException as e:
-            raise PathError(
-                'Some of the path segments of {} are missing within {}'.format(path, self.data),
-                e)
+            m = 'Some of the path segments of {} are missing within {}'.format(path, self.data)
+            raise PathError(m) from e
 
     def cd(self, path, readonly=False):
         return ChildDelver(self, self.readonly or readonly, path)
