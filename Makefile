@@ -8,6 +8,7 @@ build: coverage
 	poetry build
 
 publish: build
+	git tag $$(poetry version -s)
 	poetry publish
 
 # Intentionally have no prerequisites; should be able to run tests even if nothing has changed
