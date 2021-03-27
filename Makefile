@@ -1,4 +1,4 @@
-sources = $(wildcard datalayers/*.py)
+sources = $(wildcard datadelve/*.py)
 tests = $(wildcard tests/*.py)
 
 .PHONY: test coverage view-coverage clean build publish

@@ -178,6 +178,16 @@ class TestJsonDelver(unittest.TestCase):
         with self.assertRaises(InvalidFileError):
             JsonDelver(otherfile.name)
 
+    def test_symlink(self):
+        alternate = Path('/tmp/symlink')
+        try:
+            alternate.symlink_to(self.file.name)
+            hard = JsonDelver(self.file.name)
+            soft = JsonDelver(alternate)
+            self.assertIs(hard, soft)
+        finally:
+            alternate.unlink()
+
     def tearDown(self) -> None:
         self.file.close()
         Path(self.file.name).unlink()

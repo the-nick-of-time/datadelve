@@ -1,7 +1,7 @@
 import collections
 import json
 from pathlib import Path
-from typing import Dict, Any, Union, List
+from typing import Dict, Any, Union, List, Hashable
 
 import jsonpointer
 
@@ -112,9 +112,15 @@ class ChildDelver(Delver):
 class JsonDelver(DataDelver):
     __EXTANT = {}
 
+    @staticmethod
+    def cache_key(path: Union[Path, str]) -> Hashable:
+        realpath = Path(path).resolve()
+        return str(realpath)
+
     def __new__(cls, path: Union[Path, str], **kwargs):
-        if str(path) in cls.__EXTANT:
-            return cls.__EXTANT[str(path)]
+        key = cls.cache_key(path)
+        if key in cls.__EXTANT:
+            return cls.__EXTANT[key]
         else:
             obj = super().__new__(cls)
             return obj
