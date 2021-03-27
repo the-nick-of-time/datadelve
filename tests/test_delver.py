@@ -5,7 +5,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
-    IterationError, PathError, InvalidFileError, UnreadableFileError
+    IterationError, PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -271,6 +271,17 @@ class TestChainedDelver(unittest.TestCase):
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
         self.assertIs(linked[self.file1.name], delve1)
+
+    def test_symlink(self):
+        link = Path('/tmp/symlink')
+        try:
+            link.symlink_to(self.file1.name)
+            delve1 = JsonDelver(self.file1.name)
+            delve2 = JsonDelver(link)
+            with self.assertRaises(DuplicateInChainError):
+                ChainedDelver(delve1, delve2)
+        finally:
+            link.unlink()
 
     def tearDown(self) -> None:
         self.file1.close()

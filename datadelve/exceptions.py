@@ -24,3 +24,7 @@ class MergeError(DelverError, TypeError):
 
 class IterationError(DelverError, TypeError):
     pass
+
+
+class DuplicateInChainError(DelverError, ValueError):
+    pass

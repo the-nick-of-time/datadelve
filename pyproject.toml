@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "datadelve"
-version = "0.3.1"
+version = "0.4.0"
 description = "A library to read and manipulate nested data structures, particularly ones read from JSON files"
 authors = ["Nick Thurmes <nthurmes@gmail.com>"]
 license = "GPL-2.0+"

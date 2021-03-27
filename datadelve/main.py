@@ -6,7 +6,7 @@ from typing import Dict, Any, Union, List, Hashable
 import jsonpointer
 
 from datadelve.exceptions import IterationError, ReadonlyError, MergeError, PathError, \
-    InvalidFileError, UnreadableFileError
+    InvalidFileError, UnreadableFileError, DuplicateInChainError
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
@@ -152,10 +152,15 @@ class JsonDelver(DataDelver):
 
 
 class ChainedDelver:
-    def __init__(self, *interfaces: JsonDelver):
+    def __init__(self, *delvers: JsonDelver):
         """Delvers should come in order from least to most specific"""
+        unique = set()
+        for delver in delvers:
+            if delver in unique:
+                raise DuplicateInChainError(str(delver) + ' is a duplicate')
+            unique.add(delver)
         self.searchpath = collections.OrderedDict(
-            (str(inter.filename), inter) for inter in interfaces)
+            (str(inter.filename), inter) for inter in delvers)
 
     def __getitem__(self, filename: str) -> JsonDelver:
         return self.searchpath[filename]
