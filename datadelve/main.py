@@ -114,7 +114,10 @@ class JsonDelver(DataDelver):
 
     @staticmethod
     def cache_key(path: Union[Path, str]) -> Hashable:
-        realpath = Path(path).resolve()
+        try:
+            realpath = Path(path).resolve()
+        except OSError as e:
+            raise UnreadableFileError(str(path) + ' could not be read') from e
         return str(realpath)
 
     def __new__(cls, path: Union[Path, str], **kwargs):
