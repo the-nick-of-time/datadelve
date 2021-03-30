@@ -1,4 +1,5 @@
 import collections
+import enum
 import json
 from pathlib import Path
 from typing import Dict, Any, Union, List, Hashable
@@ -154,6 +155,12 @@ class JsonDelver(DataDelver):
             json.dump(self.data, f, indent=2)
 
 
+class MergeStrategy(enum.Enum):
+    FIRST = 'first'
+    MERGE = 'merge'
+    COLLECT = 'collect'
+
+
 class ChainedDelver(Delver):
     def __init__(self, *delvers: JsonDelver):
         """Delvers should come in order from least to most specific"""
@@ -207,11 +214,11 @@ class ChainedDelver(Delver):
                 every.append(found)
         return every
 
-    def get(self, path: str, strategy: str = 'first') -> JsonValue:
+    def get(self, path: str, strategy: MergeStrategy = MergeStrategy.FIRST) -> JsonValue:
         strategies = {
-            'first': self._first,
-            'merge': self._merge,
-            'collect': self._collect,
+            MergeStrategy.FIRST: self._first,
+            MergeStrategy.MERGE: self._merge,
+            MergeStrategy.COLLECT: self._collect,
         }
         return strategies[strategy](path)
 
