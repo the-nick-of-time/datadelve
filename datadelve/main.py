@@ -162,7 +162,7 @@ class MergeStrategy(enum.Enum):
 
 
 class ChainedDelver(Delver):
-    def __init__(self, *delvers: JsonDelver):
+    def __init__(self, *delvers: Delver):
         """Delvers should come in order from least to most specific"""
         unique = set()
         for delver in delvers:
@@ -170,10 +170,7 @@ class ChainedDelver(Delver):
                 raise DuplicateInChainError(str(delver) + ' is a duplicate')
             unique.add(delver)
         self.searchpath = collections.OrderedDict(
-            (str(inter.filename), inter) for inter in delvers)
-
-    def __getitem__(self, filename: str) -> JsonDelver:
-        return self.searchpath[filename]
+            (id(delver), delver) for delver in delvers)
 
     def _most_to_least(self):
         return reversed(self.searchpath.values())
@@ -227,7 +224,7 @@ class ChainedDelver(Delver):
         most_specific.set(path, value)
 
     def delete(self, path: str) -> None:
-        if any((layer.readonly for layer in self._most_to_least())):
+        if any((getattr(layer, 'readonly', False) for layer in self._most_to_least())):
             raise ReadonlyError('Cannot delete {} from all delvers in {}'.format(
                 path, list(self._least_to_most())
             ))

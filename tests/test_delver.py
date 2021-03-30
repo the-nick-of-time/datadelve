@@ -1,7 +1,6 @@
 import json
 import tempfile
 import unittest
-from collections import OrderedDict
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
@@ -228,14 +227,6 @@ class TestChainedDelver(unittest.TestCase):
         json.dump(self.data2, self.file2)
         self.file2.flush()
 
-    def test_create(self):
-        delve1 = JsonDelver(self.file1.name)
-        delve2 = JsonDelver(self.file2.name)
-        linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.searchpath, OrderedDict([
-            (str(delve1.filename), delve1), (str(delve2.filename), delve2)
-        ]))
-
     def test_get_first(self):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
@@ -267,12 +258,6 @@ class TestChainedDelver(unittest.TestCase):
         self.assertEqual(linked.get('/dict', strategy=MergeStrategy.COLLECT),
                          [{'x': 'X', 'y': 'Y'}, {'a': 'A', 'b': 'B'}])
         self.assertEqual(linked.get('/sometimes', strategy=MergeStrategy.COLLECT), [['here']])
-
-    def test_retrieve(self):
-        delve1 = JsonDelver(self.file1.name)
-        delve2 = JsonDelver(self.file2.name)
-        linked = ChainedDelver(delve1, delve2)
-        self.assertIs(linked[self.file1.name], delve1)
 
     def test_symlink(self):
         link = Path('/tmp/symlink')
