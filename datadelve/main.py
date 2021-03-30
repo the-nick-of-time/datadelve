@@ -129,7 +129,7 @@ class JsonDelver(DataDelver):
             obj = super().__new__(cls)
             return obj
 
-    def __init__(self, filename: Union[Path, str], readonly=False):
+    def __init__(self, filename: Union[Path, str], *, readonly=False):
         self.filename = Path(filename)
         try:
             with self.filename.open('r') as f:
@@ -169,14 +169,13 @@ class ChainedDelver(Delver):
             if delver in unique:
                 raise DuplicateInChainError(str(delver) + ' is a duplicate')
             unique.add(delver)
-        self.searchpath = collections.OrderedDict(
-            (id(delver), delver) for delver in delvers)
+        self.searchpath = delvers
 
     def _most_to_least(self):
-        return reversed(self.searchpath.values())
+        return reversed(self.searchpath)
 
     def _least_to_most(self):
-        return self.searchpath.values()
+        return self.searchpath
 
     def _first(self, path: str):
         for delver in self._most_to_least():
