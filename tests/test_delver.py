@@ -283,6 +283,41 @@ class TestChainedDelver(unittest.TestCase):
         finally:
             link.unlink()
 
+    def test_set(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        linked.set('/new', 'foo')
+        self.assertEqual(linked.get('/new'), 'foo')
+
+    def test_delete(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        linked.delete('/list')
+        self.assertIsNone(linked.get('/list'))
+
+    def test_delete_readonly(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name, readonly=True)
+        linked = ChainedDelver(delve1, delve2)
+        with self.assertRaises(ReadonlyError):
+            linked.delete('/list')
+
+    def test_delete_nonexistent(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        linked.delete('/nonexistent')
+
+    def test_cd(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        subset = linked.cd('/dict')
+        self.assertEqual(subset.get('/a'), 'A')
+        self.assertEqual(subset.get('/x'), 'X')
+
     def tearDown(self) -> None:
         self.file1.close()
         self.file2.close()

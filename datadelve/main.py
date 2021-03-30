@@ -87,7 +87,7 @@ class DataDelver(Delver):
 
 
 class ChildDelver(Delver):
-    def __init__(self, parent: DataDelver, readonly=False, basepath=''):
+    def __init__(self, parent: Delver, readonly=False, basepath=''):
         self.parent = parent
         self.readonly = readonly
         self.basepath = basepath.rstrip('/')
@@ -154,7 +154,7 @@ class JsonDelver(DataDelver):
             json.dump(self.data, f, indent=2)
 
 
-class ChainedDelver:
+class ChainedDelver(Delver):
     def __init__(self, *delvers: JsonDelver):
         """Delvers should come in order from least to most specific"""
         unique = set()
@@ -214,3 +214,21 @@ class ChainedDelver:
             'collect': self._collect,
         }
         return strategies[strategy](path)
+
+    def set(self, path: str, value: Any) -> None:
+        most_specific = next(self._most_to_least())
+        most_specific.set(path, value)
+
+    def delete(self, path: str) -> None:
+        if any((layer.readonly for layer in self._most_to_least())):
+            raise ReadonlyError('Cannot delete {} from all delvers in {}'.format(
+                path, list(self._least_to_most())
+            ))
+        for layer in self._least_to_most():
+            try:
+                layer.delete(path)
+            except PathError:
+                pass
+
+    def cd(self, path: str, readonly=False) -> 'Delver':
+        return ChildDelver(self, readonly, path)
