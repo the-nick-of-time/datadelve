@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
-    IterationError, PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
+    PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
     MergeStrategy
 
 
@@ -90,18 +90,6 @@ class TestDataDelver(unittest.TestCase):
             delve.delete('/string')
         with self.assertRaises(ReadonlyError):
             delve.set('/new', 'foo')
-
-    def test_iter(self):
-        delve = DataDelver(self.data)
-        for get_pair, orig_pair in zip(delve, self.data.items()):
-            self.assertEqual(get_pair, orig_pair)
-        child = delve.cd('/list')
-        for pulled, original in zip(child, self.data['list']):
-            self.assertEqual(pulled, original)
-        scalar = delve.cd('/string')
-        with self.assertRaises(IterationError):
-            for impossible in scalar:
-                pass
 
     def test_set_root_after_cd(self):
         delve = DataDelver(self.data)

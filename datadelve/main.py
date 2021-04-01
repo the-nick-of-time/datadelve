@@ -6,22 +6,13 @@ from typing import Dict, Any, Union, List, Hashable
 
 import jsonpointer
 
-from datadelve.exceptions import IterationError, ReadonlyError, MergeError, PathError, \
-    InvalidFileError, UnreadableFileError, DuplicateInChainError
+from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFileError, \
+    UnreadableFileError, DuplicateInChainError
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
 
 class Delver:
-    def __iter__(self):
-        obj = self.get('')
-        if isinstance(obj, dict):
-            yield from obj.items()
-        elif isinstance(obj, list):
-            yield from obj
-        else:
-            raise IterationError('Cannot iterate over {!r}'.format(obj))
-
     def get(self, path: str) -> Any:
         raise NotImplementedError()
 
