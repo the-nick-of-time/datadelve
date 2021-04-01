@@ -162,14 +162,14 @@ class ChainedDelver(Delver):
             unique.add(delver)
         self.searchpath = delvers
 
-    def _most_to_least(self):
+    def decreasing_specificity(self):
         return reversed(self.searchpath)
 
-    def _least_to_most(self):
+    def increasing_specificity(self):
         return self.searchpath
 
     def _first(self, path: str):
-        for delver in self._most_to_least():
+        for delver in self.decreasing_specificity():
             found = delver.get(path)
             if found is not None:
                 return found
@@ -178,7 +178,7 @@ class ChainedDelver(Delver):
     def _merge(self, path: str) -> Union[list, dict]:
         collected = None
         merger = None
-        for delver in self._least_to_most():
+        for delver in self.increasing_specificity():
             found = delver.get(path)
             if found is not None:
                 if collected is None:
@@ -195,7 +195,7 @@ class ChainedDelver(Delver):
 
     def _collect(self, path: str) -> List[Any]:
         every = []
-        for delver in self._most_to_least():
+        for delver in self.decreasing_specificity():
             found = delver.get(path)
             if found is not None:
                 every.append(found)
@@ -210,15 +210,15 @@ class ChainedDelver(Delver):
         return strategies[strategy](path)
 
     def set(self, path: str, value: Any) -> None:
-        most_specific = next(self._most_to_least())
+        most_specific = next(self.decreasing_specificity())
         most_specific.set(path, value)
 
     def delete(self, path: str) -> None:
-        if any((getattr(layer, 'readonly', False) for layer in self._most_to_least())):
+        if any((getattr(layer, 'readonly', False) for layer in self.decreasing_specificity())):
             raise ReadonlyError('Cannot delete {} from all delvers in {}'.format(
-                path, list(self._least_to_most())
+                path, list(self.increasing_specificity())
             ))
-        for layer in self._least_to_most():
+        for layer in self.increasing_specificity():
             try:
                 layer.delete(path)
             except PathError:
