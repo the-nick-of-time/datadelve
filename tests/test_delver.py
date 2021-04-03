@@ -69,7 +69,7 @@ class TestDataDelver(unittest.TestCase):
         with self.assertRaises(PathError):
             delve.delete('/dict/nested/nonexistent')
         delve.delete('')
-        self.assertEqual(delve.get(''), {})
+        self.assertEqual(delve.get(''), None)
 
     def test_cd(self):
         delve = DataDelver(self.data)

@@ -69,6 +69,7 @@ class DataDelver(Delver):
 
     :ivar readonly: Whether this view on the data allows set and delete or not.
     """
+    _sentinel = object()
 
     class JsonPointerCache:
         """A cache of the JSON Pointers which have been used.
@@ -102,24 +103,20 @@ class DataDelver(Delver):
         self._cache = type(self).JsonPointerCache()
 
     def get(self, path: str, default=None):
-        if path == '':
-            return self.data
+        if self.data is self._sentinel and path == '':
+            return default
         pointer = self._cache[path]
         return pointer.resolve(self.data, default)
 
     def delete(self, path):
         """Deletes the element at the given path.
 
-        If path is the empty string (referring to the root of the data
-        structure), the data structure will be replaced by an empty dictionary.
-        This can cause different semantics if you started with a list instead.
-
         :param path: The path leading to the element to delete
         """
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
         if path == '':
-            self.data = {}
+            self.data = self._sentinel
             return
         pointer = self._cache[path]
         try:
