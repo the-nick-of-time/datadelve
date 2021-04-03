@@ -5,7 +5,7 @@ from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
     PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
-    MergeStrategy
+    FindStrategy
 
 
 def linked_equal(a: ChainedDelver, b: ChainedDelver):
@@ -110,6 +110,11 @@ class TestDataDelver(unittest.TestCase):
         with self.assertRaises(PathError):
             delve.set('/nonexistent/path', 'foo')
 
+    def test_default(self):
+        delve = DataDelver(self.data)
+        sentinel = object()
+        self.assertIs(delve.get('/nonexistent', sentinel), sentinel)
+
 
 class TestJsonDelver(unittest.TestCase):
     def setUp(self) -> None:
@@ -176,6 +181,11 @@ class TestJsonDelver(unittest.TestCase):
         finally:
             alternate.unlink()
 
+    def test_default(self):
+        delve = JsonDelver(self.file.name)
+        sentinel = object()
+        self.assertIs(delve.get('/nonexistent', sentinel), sentinel)
+
     def tearDown(self) -> None:
         self.file.close()
         Path(self.file.name).unlink()
@@ -219,33 +229,33 @@ class TestChainedDelver(unittest.TestCase):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get('/string', strategy=MergeStrategy.FIRST), 'other')
-        self.assertEqual(linked.get('/list/0', strategy=MergeStrategy.FIRST), 'some')
+        self.assertEqual(linked.get('/string', strategy=FindStrategy.FIRST), 'other')
+        self.assertEqual(linked.get('/list/0', strategy=FindStrategy.FIRST), 'some')
         self.assertEqual(linked.get('/nonexistent'), None)
 
     def test_get_merge(self):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get('/list', strategy=MergeStrategy.MERGE),
+        self.assertEqual(linked.get('/list', strategy=FindStrategy.MERGE),
                          ['string', 1, None, True, 'some', 'more'])
-        self.assertEqual(linked.get('/dict', strategy=MergeStrategy.MERGE),
+        self.assertEqual(linked.get('/dict', strategy=FindStrategy.MERGE),
                          {'a': 'A', 'b': 'B', 'x': 'X', 'y': 'Y'})
-        self.assertEqual(linked.get('/sometimes', strategy=MergeStrategy.MERGE), ['here'])
+        self.assertEqual(linked.get('/sometimes', strategy=FindStrategy.MERGE), ['here'])
         with self.assertRaises(MergeError):
-            linked.get('/string', strategy=MergeStrategy.MERGE)
+            linked.get('/string', strategy=FindStrategy.MERGE)
 
     def test_get_collect(self):
         delve1 = JsonDelver(self.file1.name)
         delve2 = JsonDelver(self.file2.name)
         linked = ChainedDelver(delve1, delve2)
-        self.assertEqual(linked.get('/string', strategy=MergeStrategy.COLLECT),
+        self.assertEqual(linked.get('/string', strategy=FindStrategy.COLLECT),
                          ['other', 'value'])
-        self.assertEqual(linked.get('/list', strategy=MergeStrategy.COLLECT),
+        self.assertEqual(linked.get('/list', strategy=FindStrategy.COLLECT),
                          [['some', 'more'], ['string', 1, None, True]])
-        self.assertEqual(linked.get('/dict', strategy=MergeStrategy.COLLECT),
+        self.assertEqual(linked.get('/dict', strategy=FindStrategy.COLLECT),
                          [{'x': 'X', 'y': 'Y'}, {'a': 'A', 'b': 'B'}])
-        self.assertEqual(linked.get('/sometimes', strategy=MergeStrategy.COLLECT), [['here']])
+        self.assertEqual(linked.get('/sometimes', strategy=FindStrategy.COLLECT), [['here']])
 
     def test_symlink(self):
         link = Path('/tmp/symlink')
@@ -292,6 +302,29 @@ class TestChainedDelver(unittest.TestCase):
         subset = linked.cd('/dict')
         self.assertEqual(subset.get('/a'), 'A')
         self.assertEqual(subset.get('/x'), 'X')
+
+    def test_default(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        sentinel = object()
+        self.assertIs(linked.get('/nonexistent', sentinel), sentinel)
+
+    def test_default_collect(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        sentinel = object()
+        self.assertIs(linked.get('/nonexistent', sentinel, strategy=FindStrategy.COLLECT),
+                      sentinel)
+
+    def test_default_merge(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        linked = ChainedDelver(delve1, delve2)
+        sentinel = object()
+        self.assertIs(linked.get('/nonexistent', sentinel, strategy=FindStrategy.MERGE),
+                      sentinel)
 
     def tearDown(self) -> None:
         self.file1.close()

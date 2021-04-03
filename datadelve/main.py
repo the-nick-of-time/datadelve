@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Dict, Any, Union, List, Hashable
 
 import jsonpointer
-
 from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFileError, \
     UnreadableFileError, DuplicateInChainError
 
@@ -13,7 +12,7 @@ JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue
 
 
 class Delver:
-    def get(self, path: str) -> Any:
+    def get(self, path: str, default=None) -> Any:
         raise NotImplementedError()
 
     def set(self, path: str, value: Any) -> None:
@@ -41,11 +40,11 @@ class DataDelver(Delver):
         self.readonly = readonly
         self._cache = type(self).JsonPointerCache()
 
-    def get(self, path: str):
+    def get(self, path: str, default=None):
         if path == '':
             return self.data
         pointer = self._cache[path]
-        return pointer.resolve(self.data, None)
+        return pointer.resolve(self.data, default)
 
     def delete(self, path):
         if self.readonly:
@@ -84,8 +83,8 @@ class ChildDelver(Delver):
         self.readonly = readonly
         self.basepath = basepath.rstrip('/')
 
-    def get(self, path):
-        return self.parent.get(self.basepath + path)
+    def get(self, path, default=None):
+        return self.parent.get(self.basepath + path, default)
 
     def set(self, path, value):
         if self.readonly:
@@ -146,7 +145,7 @@ class JsonDelver(DataDelver):
             json.dump(self.data, f, indent=2)
 
 
-class MergeStrategy(enum.Enum):
+class FindStrategy(enum.Enum):
     FIRST = 'first'
     MERGE = 'merge'
     COLLECT = 'collect'
@@ -168,14 +167,14 @@ class ChainedDelver(Delver):
     def increasing_specificity(self):
         return self.searchpath
 
-    def _first(self, path: str):
+    def _first(self, path: str, default=None):
         for delver in self.decreasing_specificity():
             found = delver.get(path)
             if found is not None:
                 return found
-        return None
+        return default
 
-    def _merge(self, path: str) -> Union[list, dict]:
+    def _merge(self, path: str, default=None) -> Union[list, dict]:
         collected = None
         merger = None
         for delver in self.increasing_specificity():
@@ -191,23 +190,24 @@ class ChainedDelver(Delver):
                         raise MergeError("Can only merge collections, not {!r}".format(found))
                 else:
                     merger(collected, found)
-        return collected
+        return collected if collected is not None else default
 
-    def _collect(self, path: str) -> List[Any]:
+    def _collect(self, path: str, default=None) -> List[Any]:
         every = []
         for delver in self.decreasing_specificity():
             found = delver.get(path)
             if found is not None:
                 every.append(found)
-        return every
+        return every if every != [] else default
 
-    def get(self, path: str, strategy: MergeStrategy = MergeStrategy.FIRST) -> JsonValue:
+    def get(self, path: str, default=None,
+            strategy: FindStrategy = FindStrategy.FIRST) -> JsonValue:
         strategies = {
-            MergeStrategy.FIRST: self._first,
-            MergeStrategy.MERGE: self._merge,
-            MergeStrategy.COLLECT: self._collect,
+            FindStrategy.FIRST: self._first,
+            FindStrategy.MERGE: self._merge,
+            FindStrategy.COLLECT: self._collect,
         }
-        return strategies[strategy](path)
+        return strategies[strategy](path, default)
 
     def set(self, path: str, value: Any) -> None:
         most_specific = next(self.decreasing_specificity())
