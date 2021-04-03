@@ -12,30 +12,91 @@ JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue
 
 
 class Delver:
+    """All classes in this package follow this interface."""
+
     def get(self, path: str, default=None) -> Any:
+        """Retrieve an element from the backing data structure.
+
+        :param path: The JSON Path of the element desired.
+        :param default: If no element exists at the path specified, return this
+            instead.
+        :return: The requested element.
+        """
         raise NotImplementedError()
 
     def set(self, path: str, value: Any) -> None:
+        """Replace the value at the specified location with a new one.
+
+        Invariant: for an instance ``i``, if ``i.set(path, value)`` is called,
+            ``i.get(path)`` returns ``value``.
+
+        :param path: The JSON Path of the element to replace.
+        :param value: The value to replace with.
+        """
         raise NotImplementedError()
 
     def delete(self, path: str) -> None:
+        """Remove the specified element from the data structure.
+
+        Invariant: for an instance `i`, if `i.delete(path)` is called,
+            `i.get(path)` returns nothing.
+
+        :param path: The JSON Path of the element to remove.
+        """
         raise NotImplementedError()
 
     def cd(self, path: str, readonly=False) -> 'Delver':
+        """Focuses in on a particular section of the data structure.
+
+        Inspired by "changing directory" in a file system, where subsequent
+            accesses will treat the path you have navigated to as the new root
+            for further lookups.
+
+        :param path: The path to make the new base for lookups.
+        :param readonly: Whether this new view on the data should restrict
+            setting or deleting members.
+        :return: A Delver that treats the given path as if it were prepended on
+            all paths given to the other functions.
+        """
         raise NotImplementedError()
 
 
 class DataDelver(Delver):
+    """A Delver which handles any general-purpose python data structure.
+
+    Anything that supports __getitem__ (that is, structure[key]-style access)
+        will work here.
+
+    :ivar readonly: Whether this view on the data allows set and delete or not.
+    """
+
     class JsonPointerCache:
+        """A cache of the JSON Pointers which have been used.
+
+        Avoids constructing a new pointer object every time since in practice
+            the same path is used multiple times over the course of the
+            instance's lifetime.
+        """
+
         def __init__(self):
             self.cache = {}
 
         def __getitem__(self, key: str) -> jsonpointer.JsonPointer:
+            """Creates a JSON Pointer for the given path
+
+            :param key: The path desired.
+            :return: The JsonPointer object from parsing that path.
+            """
             if key not in self.cache:
                 self.cache[key] = jsonpointer.JsonPointer(key)
             return self.cache[key]
 
     def __init__(self, data: Union[list, Dict[str, Any]], readonly=False):
+        """Wraps any general python data structure to allow easy access.
+
+        :param data: The data structure to wrap
+        :param readonly: Whether this view should be readonly
+        """
         self.data = data
         self.readonly = readonly
         self._cache = type(self).JsonPointerCache()
@@ -47,6 +108,14 @@ class DataDelver(Delver):
         return pointer.resolve(self.data, default)
 
     def delete(self, path):
+        """Deletes the element at the given path.
+
+        If path is the empty string (referring to the root of the data
+        structure), the data structure will be replaced by an empty dictionary.
+        This can cause different semantics if you started with a list instead.
+
+        :param path: The path leading to the element to delete
+        """
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
         if path == '':
@@ -101,6 +170,16 @@ class ChildDelver(Delver):
 
 
 class JsonDelver(DataDelver):
+    """A Delver that reads a JSON file and represents it uniquely.
+
+    The class remembers which files have been opened, and will return the first
+    JsonDelver to wrap a particular file if that file is requested again. This
+    includes symbolic links that resolve to the same real file. This means that
+    you cannot have two distinct JsonDelvers that point at the same file which
+    may get out of sync with each other.
+
+    :ivar filename: The file it read from and will write to.
+    """
     __EXTANT = {}
 
     @staticmethod
@@ -120,6 +199,12 @@ class JsonDelver(DataDelver):
             return obj
 
     def __init__(self, filename: Union[Path, str], *, readonly=False):
+        """Creates a view on the data contained within the JSON file specified.
+
+        :param filename: The path of the file to read.
+        :param readonly: Whether this JsonDelver should enable setting,
+            deleting, and saving back to the file system.
+        """
         self.filename = Path(filename)
         try:
             with self.filename.open('r') as f:
@@ -139,6 +224,12 @@ class JsonDelver(DataDelver):
         return self.filename.name
 
     def write(self):
+        """Writes back the updated values to the source file.
+
+        :raises ReadonlyError: If this Delver is marked readonly. If it is,
+            then presumably no changes could have been made to the data anyway,
+            but prevent it all the same.
+        """
         if self.readonly:
             raise ReadonlyError("Trying to write a readonly file")
         with self.filename.open('w') as f:
@@ -153,7 +244,10 @@ class FindStrategy(enum.Enum):
 
 class ChainedDelver(Delver):
     def __init__(self, *delvers: Delver):
-        """Delvers should come in order from least to most specific"""
+        """Collects multiple Delvers to look through all of them in order.
+
+        :param delvers: Delvers must come in order from least to most specific
+        """
         unique = set()
         for delver in delvers:
             if delver in unique:
@@ -202,6 +296,32 @@ class ChainedDelver(Delver):
 
     def get(self, path: str, default=None,
             strategy: FindStrategy = FindStrategy.FIRST) -> JsonValue:
+        """Gets a value from one of the Delvers in the chain.
+
+        The three strategies mean:
+
+        FIRST
+            Find the value in the most specific Delver it occurs in. This is
+            the default because it matches the semantics of the other types of
+            Delvers the most closely. If no Delver has the value, return
+            default.
+
+        COLLECT
+            For every Delver, if it has a value at the path, add it to a list.
+            If the value occurs in no Delvers, return default. The default
+            value does not need to be a list.
+
+        MERGE
+            Find the value from the least specific Delver possible, then add to
+            it the values found in the rest of the Delvers. This allows more
+            specific values to override more general ones. If no delvers have
+            the value, return default.
+
+        :param path: The path to look at in each contained Delver.
+        :param default: The value to return if none are found.
+        :param strategy: The strategy used to find one or more values.
+        :return: The value or values found, or default if none are found.
+        """
         strategies = {
             FindStrategy.FIRST: self._first,
             FindStrategy.MERGE: self._merge,
@@ -210,10 +330,29 @@ class ChainedDelver(Delver):
         return strategies[strategy](path, default)
 
     def set(self, path: str, value: Any) -> None:
+        """Replaces the value at the path within the most specific Delver.
+
+        This ensures that subsequent ``.get`` calls with the path and the
+        ``FIRST`` find strategy will find this new value.
+
+        :param path: The path to replace.
+        :param value: The value to replace the current one with.
+        """
         most_specific = next(self.decreasing_specificity())
         most_specific.set(path, value)
 
     def delete(self, path: str) -> None:
+        """Deletes the value at the path within all Delvers.
+
+        This ensures that subsequent ``.get`` calls will not find it.
+
+        If any of the Delvers are readonly, this will raise a ``ReadonlyError``
+        and do nothing.
+
+        :param path: The path to try to delete.
+        :raises ReadonlyError: If any of the Delvers are readonly, raise and do
+            nothing.
+        """
         if any((getattr(layer, 'readonly', False) for layer in self.decreasing_specificity())):
             raise ReadonlyError('Cannot delete {} from all delvers in {}'.format(
                 path, list(self.increasing_specificity())
