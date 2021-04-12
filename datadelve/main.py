@@ -11,7 +11,7 @@ from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFi
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
-__all__ = ['Delver', 'DataDelver', 'JsonDelver', 'ChainedDelver']
+__all__ = ['Delver', 'DataDelver', 'JsonDelver', 'ChainedDelver', 'FindStrategy']
 
 
 class Delver:
@@ -256,9 +256,17 @@ class ChainedDelver(Delver):
         self.searchpath = delvers
 
     def decreasing_specificity(self):
+        """Iterate over the contained delvers from most to least specific.
+
+        :return: Iterable in the proper order
+        """
         return reversed(self.searchpath)
 
     def increasing_specificity(self):
+        """Iterate over the contained delvers from least to most specific.
+
+        :return: Iterable in the proper order
+        """
         return self.searchpath
 
     def _first(self, path: str, default=None):
