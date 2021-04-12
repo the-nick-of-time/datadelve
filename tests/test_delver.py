@@ -8,13 +8,6 @@ from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, Merg
     FindStrategy
 
 
-def linked_equal(a: ChainedDelver, b: ChainedDelver):
-    return a.searchpath == b.searchpath
-
-
-ChainedDelver.__eq__ = linked_equal
-
-
 class TestDataDelver(unittest.TestCase):
     def setUp(self) -> None:
         # Sample data to be used in each method
@@ -114,6 +107,13 @@ class TestDataDelver(unittest.TestCase):
         delve = DataDelver(self.data)
         sentinel = object()
         self.assertIs(delve.get('/nonexistent', sentinel), sentinel)
+
+    def test_eq(self):
+        delve = DataDelver(self.data)
+        equal = DataDelver(self.data.copy())
+        notequal = DataDelver(['foo', 'bar'])
+        self.assertEqual(delve, equal)
+        self.assertNotEqual(delve, notequal)
 
 
 class TestJsonDelver(unittest.TestCase):
@@ -325,6 +325,17 @@ class TestChainedDelver(unittest.TestCase):
         sentinel = object()
         self.assertIs(linked.get('/nonexistent', sentinel, strategy=FindStrategy.MERGE),
                       sentinel)
+
+    def test_eq(self):
+        delve1 = JsonDelver(self.file1.name)
+        delve2 = JsonDelver(self.file2.name)
+        delve3 = DataDelver(delve1.get('').copy())
+        linked = ChainedDelver(delve1, delve2)
+        notequal = ChainedDelver(delve2, delve1)
+        equal = ChainedDelver(delve3, delve2)
+
+        self.assertNotEqual(linked, notequal)
+        self.assertEqual(linked, equal)
 
     def tearDown(self) -> None:
         self.file1.close()

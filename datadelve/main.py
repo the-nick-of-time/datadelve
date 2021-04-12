@@ -17,6 +17,9 @@ __all__ = ['Delver', 'DataDelver', 'JsonDelver', 'ChainedDelver', 'FindStrategy'
 class Delver:
     """All classes in this package follow this interface."""
 
+    def __eq__(self, other):
+        return self.get('') == other.get('')
+
     def get(self, path: str, default=None) -> Any:
         """Retrieve an element from the backing data structure.
 
@@ -250,10 +253,18 @@ class ChainedDelver(Delver):
         """
         unique = set()
         for delver in delvers:
-            if delver in unique:
+            if id(delver) in unique:
                 raise DuplicateInChainError(str(delver) + ' is a duplicate')
-            unique.add(delver)
+            unique.add(id(delver))
         self.searchpath = delvers
+
+    def __eq__(self, other):
+        """Check equality with another ChainedDelver.
+
+        Or something else that has .get with a FindStrategy specifiable.
+        """
+        return (self.get('', strategy=FindStrategy.COLLECT)
+                == other.get('', strategy=FindStrategy.COLLECT))
 
     def decreasing_specificity(self):
         """Iterate over the contained delvers from most to least specific.
