@@ -8,9 +8,7 @@ build: coverage
 	poetry build
 
 publish: build
-	# assert that working tree is clean, otherwise the tag might go in the wrong place
-	test -z "$$(git status --short)"
-	git tag $$(poetry version -s)
+	./tag.sh
 	poetry publish
 
 # Intentionally have no prerequisites; should be able to run tests even if nothing has changed
