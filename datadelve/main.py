@@ -75,6 +75,7 @@ class DataDelver(Delver):
         will work here.
 
     :ivar readonly: Whether this view on the data allows set and delete or not.
+    :cvar _cache: A singular cache of JSON pointers to simplify the runtime.
     """
     _sentinel = object()
 
@@ -99,6 +100,10 @@ class DataDelver(Delver):
                 self.cache[key] = jsonpointer.JsonPointer(key)
             return self.cache[key]
 
+    # Since the JSON pointers aren't tied to any particular data, they can be
+    # used across instances
+    _cache = JsonPointerCache()
+
     def __init__(self, data: Union[list, Dict[str, Any]], readonly=False):
         """Wraps any general python data structure to allow easy access.
 
@@ -107,7 +112,6 @@ class DataDelver(Delver):
         """
         self.data = data
         self.readonly = readonly
-        self._cache = type(self).JsonPointerCache()
 
     def get(self, path: str, default=None):
         if self.data is self._sentinel and path == '':
