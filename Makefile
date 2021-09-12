@@ -1,5 +1,6 @@
 sources = $(wildcard datadelve/*.py)
 tests = $(wildcard tests/*.py)
+documentation = $(wildcard docs/*.rst) docs/conf.py
 
 .PHONY: test coverage view-coverage clean build publish
 
@@ -14,6 +15,13 @@ publish: build
 # Intentionally have no prerequisites; should be able to run tests even if nothing has changed
 test:
 	nose2 --verbose
+
+docs: docs/_build/html/index.html
+view-docs: docs/_build/html/index.html
+	firefox $<
+
+docs/_build/html/index.html: $(documentation) $(sources)
+	sphinx-build -b html "docs" "docs/_build/html"
 
 view-coverage: coverage
 	firefox htmlcov/index.html
