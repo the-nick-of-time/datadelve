@@ -63,6 +63,7 @@ function task:publish {
 	task:build
 	tag
 	poetry publish --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD"
+	task:coveralls
 }
 
 function task:coverage {
