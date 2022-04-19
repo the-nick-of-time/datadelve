@@ -6,7 +6,7 @@ authors = ["Nick Thurmes <nthurmes@gmail.com>"]
 license = "GPL-2.0+"
 
 [tool.poetry.dependencies]
-python = "^3.5"
+python = "^3.6"
 jsonpointer = "^2.0"
 
 [tool.poetry.dev-dependencies]
