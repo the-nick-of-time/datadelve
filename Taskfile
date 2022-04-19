@@ -82,7 +82,7 @@ function task:clean {
 
 function task:coveralls {
 	: "Upload coverage data to coveralls to update badge"
-	if [[ ! $(git symbolic-ref HEAD) = refs/heads/master ]] || [[ -z "$(git status --porcelain)" ]] ; then
+	if [[ ! $(git symbolic-ref HEAD) = refs/heads/master ]] || [[ -n "$(git status --porcelain)" ]] ; then
 		echo "Must be on the main branch and have a clean working tree for results to be meaningful." >&2
 		return 1
 	fi
