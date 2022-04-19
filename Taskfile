@@ -1,0 +1,108 @@
+#!/bin/bash
+# See https://github.com/adriancooney/Taskfile for examples
+
+# Sane error handling 
+set -o errexit -o pipefail -o nounset
+
+function already_open {
+	opened="$(poetry run python list-fftabs.py)"
+	# implicit return the exit status of grep
+	grep -q "$1$" <<<"$opened"
+}
+
+function tag {
+	version="$(poetry version --short)"
+
+	if [ -n "$(git status --short)" ]; then
+		>&2 echo Working tree not clean, make a commit to get into a publishable state
+		return 1
+	fi
+
+	if git tag "$version"; then
+		return 0
+	else
+		existing="$(git rev-parse "$version")"
+		head="$(git rev-parse HEAD)"
+		if [ "$existing" = "$head" ]; then
+			# already tagged the current commit, maybe with an aborted publish run
+			return 0
+		else
+			>&2 echo "$version" was already tagged on some other commit, bump the version or move that tag to the current commit
+			return 2
+		fi
+	fi
+}
+
+### FUNCTIONS GO HERE
+function default {
+	: "By default, run test suite"
+	task:test
+}
+
+function task:test {
+	: "Run unit test suite"
+	poetry run nose2 --verbose
+}
+
+function task:docs {
+	: "Build and open docs"
+	target="docs/_build/html/index.html"
+	poetry run make "$target"
+	if ! already_open "$target" ; then
+		firefox "$target"
+	fi
+}
+
+function task:build {
+	: "Build wheel from the sources"
+	poetry run make "dist/datadelve-$(poetry version --short)-py3-none-any.whl"
+}
+
+function task:publish {
+	: "Publish to PyPi"
+	task:build
+	tag
+	poetry publish --username="$PYPI_USERNAME" --password="$PYPI_PASSWORD"
+}
+
+function task:coverage {
+	: "Compile and open unit test coverage statistics"
+	target="htmlcov/index.html"
+	poetry run make "$target"
+	if ! already_open "$target" ; then
+		firefox "$target"
+	fi
+}
+
+function task:clean {
+	: "Clean up generated files"
+	git clean -xdf -e '/venv' -e '/.idea'
+}
+
+function task:coveralls {
+	: "Upload coverage data to coveralls to update badge"
+	if [[ ! $(git symbolic-ref HEAD) = refs/heads/master ]] || [[ -z "$(git status --porcelain)" ]] ; then
+		echo "Must be on the main branch and have a clean working tree for results to be meaningful." >&2
+		return 1
+	fi
+	task:coverage
+	COVERALLS_REPO_TOKEN="$COVERALLS_DATADELVE" poetry run coveralls
+}
+
+### /FUNCTIONS GO HERE
+
+# Auto-generate list of tasks
+function task:help {
+	: "Auto-generate a list of tasks"
+	compgen -A function | grep '^task:' | cut -d':' -f 2- | while read -r name ; do
+		paste <(printf '%s' "$name") <(type "task:$name" | sed -nE 's/[[:space:]]+: "(.*)";$/\1/p')
+	done
+}
+
+if [[ $# -eq 0 ]] ; then
+	default
+else
+	cmd="$1"
+	shift
+	"task:$cmd" "$@"
+fi
