@@ -385,3 +385,34 @@ class ChainedDelver(Delver):
 
     def cd(self, path: str, readonly=False) -> 'Delver':
         return ChildDelver(self, readonly, path)
+
+
+class JsonPath:
+    def __init__(self, *components: str):
+        if len(components) == 0:
+            self.components = []
+        if len(components) == 1:
+            self.components = components[0].split('/')
+        if len(components) > 1:
+            self.components = [self._escape(c) for c in components]
+    
+    def __str__(self):
+        return '/'.join(self.components)
+    
+    @staticmethod
+    def _escape(string):
+        return string.replace('~', '~0').replace('/', '~1')
+
+    def append(self, component: str):
+        self.components.append(self._escape(component))
+    
+    def extend(self, component: Union[str, 'JsonPath']):
+        if isinstance(component, str):
+            self.components.extend(component.split('/'))
+        elif isinstance(component, JsonPath):
+            self.components.extend(other.components)
+        else:
+            raise TypeError("Concatenate a string or JsonPath onto a JsonPath")
+    
+    def copy(self):
+        return JsonPath(*self.components)
