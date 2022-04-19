@@ -1,6 +1,6 @@
 import json
 import tempfile
-import unittest
+import unittest.mock
 from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
@@ -164,6 +164,11 @@ class TestJsonDelver(unittest.TestCase):
     def test_nonexistent_file(self):
         with self.assertRaises(UnreadableFileError):
             JsonDelver('./nonexistent')
+    
+    def test_unreadable_file(self):
+        Path(self.file.name).chmod(0o000)
+        with self.assertRaises(UnreadableFileError):
+            JsonDelver(self.file.name)
 
     def test_nonjson_file(self):
         otherfile = tempfile.NamedTemporaryFile('w+')
