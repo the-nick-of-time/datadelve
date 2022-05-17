@@ -31,12 +31,14 @@ class Delver:
         """
         raise NotImplementedError()
 
-    def set(self, path: str, value: Any) -> None:
+    def set(self, path: str, value: Any, parents=False) -> None:
         """Replace the value at the specified location with a new one.
 
         Invariant: for an instance ``i``, if ``i.set(path, value)`` is called,
             ``i.get(path)`` returns ``value``.
 
+        :param parents: Create intermediate dicts if they don't exist already.
+            Will not create lists.
         :param path: The JSON Path of the element to replace.
         :param value: The value to replace with.
         """
@@ -137,7 +139,7 @@ class DataDelver(Delver):
             m = 'Some of the path segments of {} are missing within {}'.format(path, self.data)
             raise PathError(m) from e
 
-    def set(self, path, value):
+    def set(self, path, value, parents=False):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self.data))
         if path == '':
@@ -147,8 +149,19 @@ class DataDelver(Delver):
         try:
             pointer.set(self.data, value)
         except jsonpointer.JsonPointerException as e:
-            m = 'Some of the path segments of {} are missing within {}'.format(path, self.data)
-            raise PathError(m) from e
+            if not parents:
+                m = 'Some of the path segments of {} are missing within {}'.format(path,
+                                                                                   self.data)
+                raise PathError(m) from e
+            # walk through the path segments to find any missing ones
+            doc = self.data
+            for part in pointer.parts[:-1]:
+                try:
+                    doc = pointer.walk(doc, part)
+                except jsonpointer.JsonPointerException:
+                    doc[part] = {}
+                    doc = doc[part]
+            doc[pointer.parts[-1]] = value
 
     def cd(self, path, readonly=False):
         return ChildDelver(self, self.readonly or readonly, path)
@@ -163,7 +176,7 @@ class ChildDelver(Delver):
     def get(self, path, default=None):
         return self.parent.get(self.basepath + path, default)
 
-    def set(self, path, value):
+    def set(self, path, value, parents=False):
         if self.readonly:
             raise ReadonlyError('{} is readonly'.format(self))
         self.parent.set(self.basepath + path, value)
@@ -353,12 +366,14 @@ class ChainedDelver(Delver):
         }
         return strategies[strategy](path, default)
 
-    def set(self, path: str, value: Any) -> None:
+    def set(self, path: str, value: Any, parents=False) -> None:
         """Replaces the value at the path within the most specific Delver.
 
         This ensures that subsequent ``.get`` calls with the path and the
         ``FIRST`` find strategy will find this new value.
 
+        :param parents: Create intermediate objects if they don't exist already.
+            Will not create lists.
         :param path: The path to replace.
         :param value: The value to replace the current one with.
         """

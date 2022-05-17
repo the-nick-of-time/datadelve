@@ -49,6 +49,11 @@ class TestDataDelver(unittest.TestCase):
         delve.set('', "nothing remains")
         self.assertEqual(delve.get(''), "nothing remains")
 
+    def test_set_parents(self):
+        delve = DataDelver(self.data)
+        delve.set('/nesting/new/key', 'new value', parents=True)
+        self.assertEqual(self.data['nesting']['new']['key'], 'new value')
+
     def test_delete(self):
         delve = DataDelver(self.data)
         delve.delete('/dict/a')

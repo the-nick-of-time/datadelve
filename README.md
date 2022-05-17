@@ -9,8 +9,10 @@ Much better would be to have a simple way of accessing data through a simple syn
 Applying this information to the data structures makes it easy and convenient.
 
 ## Usage
+
 ```python
 from datadelve import DataDelver
+
 data = ["your annoying data here"]
 delver = DataDelver(data)
 element = delver.get("/dict/keys/and/1/list/index")
