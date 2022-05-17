@@ -228,10 +228,7 @@ class JsonDelver(DataDelver):
         self.filename = Path(filename)
         try:
             with self.filename.open('r') as f:
-                try:
-                    data = json.load(f, object_pairs_hook=collections.OrderedDict)
-                except json.JSONDecodeError as e:
-                    raise InvalidFileError(str(self.filename) + ' is not valid JSON') from e
+                data = self._load(f)
                 super().__init__(data, readonly)
         except OSError as e:
             raise UnreadableFileError(str(self.filename) + ' could not be read') from e
@@ -242,6 +239,13 @@ class JsonDelver(DataDelver):
 
     def __str__(self):
         return self.filename.name
+
+    def _load(self, file):
+        try:
+            data = json.load(file, object_pairs_hook=collections.OrderedDict)
+        except json.JSONDecodeError as e:
+            raise InvalidFileError(str(self.filename) + ' is not valid JSON') from e
+        return data
 
     def write(self):
         """Writes back the updated values to the source file.
@@ -257,6 +261,10 @@ class JsonDelver(DataDelver):
 
 
 class FindStrategy(enum.Enum):
+    """Decide how to get values from a ChainedDelver.
+
+    See ChainedDelver.get for explanations of how they work.
+    """
     FIRST = 'first'
     MERGE = 'merge'
     COLLECT = 'collect'
@@ -407,6 +415,7 @@ class ChainedDelver(Delver):
 
 class JsonPath:
     def __init__(self, *components: str):
+        """Handles the JSONPointer escapes that are annoying to track yourself."""
         if len(components) == 0:
             self.components = []
         if len(components) == 1:
