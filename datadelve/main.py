@@ -3,7 +3,6 @@ import enum
 import json
 from pathlib import Path
 from typing import Dict, Any, Union, List, Hashable
-import sys
 
 import jsonpointer
 
@@ -12,7 +11,7 @@ from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFi
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
-__all__ = ['Delver', 'DataDelver', 'JsonDelver', 'ChainedDelver', 'FindStrategy']
+__all__ = ['Delver', 'DataDelver', 'JsonDelver', 'ChainedDelver', 'FindStrategy', 'JsonPath']
 
 
 class Delver:
@@ -411,25 +410,24 @@ class JsonPath:
         if len(components) == 0:
             self.components = []
         if len(components) == 1:
-            self.components = components[0].split('/')
+            self.components = components[0].split('/')[1:]
         if len(components) > 1:
-            self.components = [self._escape(c) for c in components]
-    
+            self.components = [jsonpointer.escape(c) for c in components]
+
     def __str__(self):
-        return '/'.join(self.components)
-    
-    @staticmethod
-    def _escape(string):
-        return string.replace('~', '~0').replace('/', '~1')
+        return '/' + '/'.join(self.components)
 
     def append(self, component: str):
-        self.components.append(self._escape(component))
-    
-    def extend(self, component: Union[str, 'JsonPath']):
+        self.components.append(jsonpointer.escape(component))
+
+    def extend(self, component: Union[str, 'JsonPath', collections.Sequence]):
         if isinstance(component, str):
-            self.components.extend(component.split('/'))
+            new = component.lstrip('/').split('/')
+            self.components.extend(new)
         elif isinstance(component, JsonPath):
-            self.components.extend(other.components)
+            self.components.extend(component.components)
+        elif isinstance(component, collections.Sequence):
+            self.components.extend([jsonpointer.escape(c) for c in component])
         else:
             raise TypeError("Concatenate a string or JsonPath onto a JsonPath")
     

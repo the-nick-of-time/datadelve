@@ -5,7 +5,7 @@ from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
     PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
-    FindStrategy
+    FindStrategy, JsonPath
 
 
 class TestDataDelver(unittest.TestCase):
@@ -169,7 +169,7 @@ class TestJsonDelver(unittest.TestCase):
     def test_nonexistent_file(self):
         with self.assertRaises(UnreadableFileError):
             JsonDelver('./nonexistent')
-    
+
     def test_unreadable_file(self):
         Path(self.file.name).chmod(0o000)
         with self.assertRaises(UnreadableFileError):
@@ -350,6 +350,56 @@ class TestChainedDelver(unittest.TestCase):
     def tearDown(self) -> None:
         self.file1.close()
         self.file2.close()
+
+
+class TestPath(unittest.TestCase):
+    def test_create_empty(self):
+        empty = JsonPath()
+        self.assertEqual(str(empty), "/")
+
+    def test_create_path(self):
+        complete = JsonPath("/foo/bar")
+        self.assertEqual(complete.components, ["foo", "bar"])
+
+    def test_create_split(self):
+        individual = JsonPath("foo", "bar")
+        self.assertEqual(individual.components, ["foo", "bar"])
+        escapes = JsonPath("/foo", "~bar")
+        self.assertEqual(escapes.components, ["~1foo", "~0bar"])
+
+    def test_append(self):
+        path = JsonPath("/foo/bar")
+        path.append("baz")
+        self.assertEqual(path.components, ["foo", "bar", "baz"])
+        path.append("/obj~")
+        self.assertEqual(path.components, ["foo", "bar", "baz", "~1obj~0"])
+
+    def test_extend_path(self):
+        path = JsonPath("/foo/bar")
+        path.extend("/baz/bop")
+        self.assertEqual(path.components, ["foo", "bar", "baz", "bop"])
+
+    def test_extend_path_obj(self):
+        path = JsonPath("/foo/bar")
+        path.extend(JsonPath("/baz/bop"))
+        self.assertEqual(path.components, ["foo", "bar", "baz", "bop"])
+
+    def test_extend_seq(self):
+        path = JsonPath("/foo/bar")
+        path.extend(["baz", "~bop/"])
+        self.assertEqual(path.components, ["foo", "bar", "baz", "~0bop~1"])
+
+    def test_extend_error(self):
+        path = JsonPath("/foo/bar")
+        with self.assertRaises(TypeError):
+            path.extend({})
+
+    def test_copy(self):
+        path = JsonPath("/foo/bar")
+        copy = path.copy()
+        path.append("baz")
+        self.assertEqual(path.components, ["foo", "bar", "baz"])
+        self.assertEqual(copy.components, ["foo", "bar"])
 
 
 if __name__ == '__main__':
