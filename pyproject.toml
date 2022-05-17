@@ -11,8 +11,8 @@ jsonpointer = "^2.0"
 
 [tool.poetry.dev-dependencies]
 coveralls = "^3.0.1"
-nose2 = "^0.9.1"
-coverage = "^5.5"
+nose2 = "^0.11.0"
+coverage = "^6.0"
 Sphinx = "^2.1"
 lz4 = "^3.0.0"
 
