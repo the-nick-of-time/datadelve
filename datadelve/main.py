@@ -7,7 +7,7 @@ from typing import Dict, Any, Union, List, Hashable
 import jsonpointer
 
 from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFileError, \
-    UnreadableFileError, DuplicateInChainError
+    UnreadableFileError, DuplicateInChainError, InitializationConflict
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
@@ -226,6 +226,10 @@ class JsonDelver(DataDelver):
             deleting, and saving back to the file system.
         """
         if hasattr(self, '_initialized'):
+            if readonly ^ self.readonly:
+                raise InitializationConflict("Tried to create a JsonDelver with a different "
+                                             "readonly parameter, so it's unclear which you "
+                                             "want")
             return
         self.filename = Path(filename)
         try:

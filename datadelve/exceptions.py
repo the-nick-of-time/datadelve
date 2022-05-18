@@ -24,3 +24,7 @@ class MergeError(DelverError, TypeError):
 
 class DuplicateInChainError(DelverError, ValueError):
     pass
+
+
+class InitializationConflict(DelverError):
+    pass

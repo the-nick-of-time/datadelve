@@ -5,7 +5,7 @@ from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
     PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
-    FindStrategy, JsonPath
+    FindStrategy, JsonPath, InitializationConflict
 
 
 class TestDataDelver(unittest.TestCase):
@@ -162,6 +162,12 @@ class TestJsonDelver(unittest.TestCase):
         first.set('/new', 'something')
         second = JsonDelver(self.file.name)
         self.assertEqual(second.get('/new'), 'something')
+        self.assertIs(first, second)
+
+    def test_flyweight_readonly_disagreement(self):
+        first = JsonDelver(self.file.name, readonly=True)
+        with self.assertRaises(InitializationConflict):
+            second = JsonDelver(self.file.name, readonly=False)
 
     def test_readonly(self):
         delve = JsonDelver(self.file.name, readonly=True)
@@ -191,8 +197,8 @@ class TestJsonDelver(unittest.TestCase):
         alternate = Path('/tmp/symlink')
         try:
             alternate.symlink_to(self.file.name)
-            hard = JsonDelver(self.file.name)
             soft = JsonDelver(alternate)
+            hard = JsonDelver(self.file.name)
             self.assertIs(hard, soft)
         finally:
             alternate.unlink()
