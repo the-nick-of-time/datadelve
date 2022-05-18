@@ -20,3 +20,17 @@ subset = delver.cd("/particular/key/to/focus/on")
 delver.set("/path/to/change", "new")
 delver.delete("/bad")
 ```
+
+## Support
+
+This package grew around a series of JSON files, so that is the primary focus. It therefore
+expects data structures with dicts and lists. As the implementation is turned over to
+jsonpointer, it will work for anything that implements `__getitem__(str)` or that is registered
+as a `collections.abc.Sequence` and implements `__getitem__(int)`.
+
+Raw data, loaded from whatever source, is accepted. So are JSON files. These have the added
+benefit of being flyweight instances, so all views on the same file reference the same object.
+This way none of them can get out of sync and make writes indeterminate as to what updates have
+actually been made. As YAML isn't in the standard library, I've split support for that into a
+separate project: [datadelve_yaml](https://pypi.org/project/datadelve_yaml/). YAML files are
+treated the same as JSON.

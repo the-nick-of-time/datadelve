@@ -157,6 +157,12 @@ class TestJsonDelver(unittest.TestCase):
         second = JsonDelver(self.file.name)
         self.assertIs(first, second)
 
+    def test_flyweight_redundant_init(self):
+        first = JsonDelver(self.file.name)
+        first.set('/new', 'something')
+        second = JsonDelver(self.file.name)
+        self.assertEqual(second.get('/new'), 'something')
+
     def test_readonly(self):
         delve = JsonDelver(self.file.name, readonly=True)
         with self.assertRaises(ReadonlyError):

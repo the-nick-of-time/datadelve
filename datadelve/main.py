@@ -225,6 +225,8 @@ class JsonDelver(DataDelver):
         :param readonly: Whether this JsonDelver should enable setting,
             deleting, and saving back to the file system.
         """
+        if hasattr(self, '_initialized'):
+            return
         self.filename = Path(filename)
         try:
             with self.filename.open('r') as f:
@@ -232,7 +234,8 @@ class JsonDelver(DataDelver):
                 super().__init__(data, readonly)
         except OSError as e:
             raise UnreadableFileError(str(self.filename) + ' could not be read') from e
-        type(self).__EXTANT[str(self.filename)] = self
+        type(self).__EXTANT[type(self).cache_key(self.filename)] = self
+        self._initialized = True
 
     def __repr__(self):
         return "<JsonDelver to {}>".format(self.filename)
