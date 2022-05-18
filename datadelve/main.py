@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import enum
 import json
 from pathlib import Path
@@ -429,7 +429,7 @@ class JsonPath:
     def append(self, component: str):
         self.components.append(jsonpointer.escape(component))
 
-    def extend(self, component: Union[str, 'JsonPath', collections.Sequence]):
+    def extend(self, component: Union[str, 'JsonPath', collections.abc.Sequence]):
         if isinstance(component, str):
             new = component.lstrip('/').split('/')
             self.components.extend(new)
