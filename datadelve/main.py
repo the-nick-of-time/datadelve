@@ -1,13 +1,14 @@
 import collections.abc
 import enum
 import json
+import typing
 from pathlib import Path
 from typing import Dict, Any, Union, List, Hashable
 
 import jsonpointer
 
 from datadelve.exceptions import ReadonlyError, MergeError, PathError, InvalidFileError, \
-    UnreadableFileError, DuplicateInChainError, InitializationConflict
+    UnreadableFileError, DuplicateInChainError, InitializationConflict, IterationError
 
 JsonValue = Union[int, float, str, None, Dict[str, 'JsonValue'], List['JsonValue']]
 
@@ -19,6 +20,9 @@ class Delver:
 
     def __eq__(self, other):
         return self.get('') == other.get('')
+
+    def __iter__(self):
+        return self.iter()
 
     def get(self, path: str, default=None) -> Any:
         """Retrieve an element from the backing data structure.
@@ -67,6 +71,24 @@ class Delver:
             all paths given to the other functions.
         """
         raise NotImplementedError()
+
+    def iter(self, path="") -> typing.Iterator['Delver']:
+        """``cd`` into all objects at path, in sequence.
+
+        :param path: The path of the substructure you want to iterate over. By
+            default, uses the whole thing (path ``""``).
+        :return: A sub-delver for each object in the structure indicated by
+            path.
+        """
+        structure = self.get(path)
+        if isinstance(structure, collections.abc.Sequence):
+            for i, _ in enumerate(structure):
+                yield self.cd(path + f"/{i}")
+        elif isinstance(structure, collections.abc.Mapping):
+            for k in structure:
+                yield self.cd(path + f"/{k}")
+        else:
+            raise IterationError(f"Object of type {type(structure)} is not iterable")
 
 
 class DataDelver(Delver):
@@ -242,7 +264,7 @@ class JsonDelver(DataDelver):
         self._initialized = True
 
     def __repr__(self):
-        return "<JsonDelver to {}>".format(self.filename)
+        return "<{} to {}>".format(type(self).__name__, self.filename)
 
     def __str__(self):
         return self.filename.name

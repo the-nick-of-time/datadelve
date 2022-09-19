@@ -5,7 +5,7 @@ from pathlib import Path
 
 from datadelve import ChainedDelver, DataDelver, JsonDelver, ReadonlyError, MergeError, \
     PathError, InvalidFileError, UnreadableFileError, DuplicateInChainError, \
-    FindStrategy, JsonPath, InitializationConflict
+    FindStrategy, JsonPath, InitializationConflict, IterationError
 
 
 class TestDataDelver(unittest.TestCase):
@@ -119,6 +119,26 @@ class TestDataDelver(unittest.TestCase):
         notequal = DataDelver(['foo', 'bar'])
         self.assertEqual(delve, equal)
         self.assertNotEqual(delve, notequal)
+
+    def test_iter(self):
+        delve = DataDelver(self.data)
+        i = 0
+        for d in delve.iter("/list"):
+            self.assertEqual(d.get(""), self.data["list"][i])
+            i += 1
+
+    def test_iter_noniterable(self):
+        delve = DataDelver(self.data)
+        with self.assertRaises(IterationError):
+            for d in delve.iter("/list/2"):
+                print(d)
+
+    def test_native_iter(self):
+        delve = DataDelver(self.data)
+        children = list(self.data.values())
+        for d in delve:
+            children.remove(d.get(""))
+        self.assertEqual([], children)
 
 
 class TestJsonDelver(unittest.TestCase):

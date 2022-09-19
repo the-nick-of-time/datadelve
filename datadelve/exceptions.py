@@ -28,3 +28,7 @@ class DuplicateInChainError(DelverError, ValueError):
 
 class InitializationConflict(DelverError):
     pass
+
+
+class IterationError(DelverError, TypeError):
+    pass
