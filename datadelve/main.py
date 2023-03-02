@@ -22,7 +22,7 @@ class Delver:
         return self.get('') == other.get('')
 
     def __iter__(self):
-        return self.iter()
+        return self.values()
 
     def get(self, path: str, default=None) -> Any:
         """Retrieve an element from the backing data structure.
@@ -72,7 +72,7 @@ class Delver:
         """
         raise NotImplementedError()
 
-    def iter(self, path="") -> typing.Iterator['Delver']:
+    def values(self, path="") -> typing.Iterator['Delver']:
         """``cd`` into all objects at path, in sequence.
 
         :param path: The path of the substructure you want to iterate over. By
@@ -87,6 +87,17 @@ class Delver:
         elif isinstance(structure, collections.abc.Mapping):
             for k in structure:
                 yield self.cd(path + f"/{k}")
+        else:
+            raise IterationError(f"Object of type {type(structure)} is not iterable")
+    
+    def items(self, path="") -> typing.Iterator['Delver']:
+        structure = self.get(path)
+        if isinstance(structure, collections.abc.Sequence):
+            for i, _ in enumerate(structure):
+                yield i, self.cd(path + f"/{i}")
+        elif isinstance(structure, collections.abc.Mapping):
+            for k in structure:
+                yield k, self.cd(path + f"/{k}")
         else:
             raise IterationError(f"Object of type {type(structure)} is not iterable")
 
